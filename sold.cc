@@ -23,6 +23,8 @@
 #include <string>
 #include <vector>
 
+#include "ldsoconf.h"
+
 #define Elf_Ehdr Elf64_Ehdr
 #define Elf_Phdr Elf64_Phdr
 #define Elf_Dyn Elf64_Dyn
@@ -1223,11 +1225,16 @@ private:
             }
         }
 
+        // TODO(hamaji): Make this customizable.
         library_paths.push_back("/lib");
         library_paths.push_back("/usr/local/lib");
         library_paths.push_back("/usr/local/lib/x86_64-linux-gnu");
         library_paths.push_back("/lib/x86_64-linux-gnu");
         library_paths.push_back("/usr/lib/x86_64-linux-gnu");
+
+        std::vector<std::string> ldsoconfs = ldsoconf::read_ldsoconf();
+        library_paths.insert(library_paths.end(), ldsoconfs.begin(), ldsoconfs.end());
+
         return library_paths;
     }
 

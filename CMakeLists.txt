@@ -11,6 +11,7 @@ endif()
 add_executable(
   sold
   sold.cc
+  ldsoconf.cc
   )
 
 add_subdirectory(tests)
