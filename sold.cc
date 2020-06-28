@@ -1223,7 +1223,7 @@ private:
             }
         }
 
-        // TODO(hamaji): From ld.so.conf. Make this customizable.
+        library_paths.push_back("/lib");
         library_paths.push_back("/usr/local/lib");
         library_paths.push_back("/usr/local/lib/x86_64-linux-gnu");
         library_paths.push_back("/lib/x86_64-linux-gnu");
