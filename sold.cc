@@ -219,8 +219,8 @@ public:
         CollectTLS();
         CollectArrays();
         CollectSymbols();
-        CollectVerneeds();
-        collectVersyms();
+        PrintAllVerneeds();
+        PrintAllVersyms();
         CopyPublicSymbols();
         Relocate();
 
@@ -632,19 +632,19 @@ private:
         syms_.SetSrcSyms(syms);
     }
 
-    void CollectVerneeds() {
-        LOGF("CollectVerneeds\n");
+    void PrintAllVerneeds() {
+        LOGF("PrintAllVerneeds\n");
         for (ELFBinary* bin : link_binaries_) {
             LOGF("==== %s ====\n", bin->filename().c_str());
-            bin->ParseVerneeds();
+            bin->PrintVerneeds();
         }
     }
 
-    void collectVersyms() {
-        LOGF("CollectVersyms\n");
+    void PrintAllVersyms() {
+        LOGF("PrintAllVersyms\n");
         for (ELFBinary* bin : link_binaries_) {
             LOGF("==== %s ====\n", bin->filename().c_str());
-            bin->ParseVersyms();
+            bin->PrintVersyms();
         }
     }
 

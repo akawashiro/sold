@@ -59,9 +59,9 @@ public:
 
     const Elf_Phdr& GetPhdr(uint64_t type);
 
-    void ParseVerneeds();
+    void PrintVerneeds();
 
-    void ParseVersyms();
+    void PrintVersyms();
 
     std::string ShowDynSymtab();
 

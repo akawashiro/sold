@@ -121,7 +121,7 @@ const Elf_Phdr& ELFBinary::GetPhdr(uint64_t type) {
     return *phdr;
 }
 
-void ELFBinary::ParseVersyms() {
+void ELFBinary::PrintVersyms() {
     CHECK(versym_);
     CHECK(nsyms_);
 
@@ -136,7 +136,7 @@ void ELFBinary::ParseVersyms() {
     }
 }
 
-void ELFBinary::ParseVerneeds() {
+void ELFBinary::PrintVerneeds() {
     CHECK(verneed_);
     Elf_Verneed* vn = verneed_;
     for (int i = 0; i < verneednum_; ++i) {
