@@ -43,7 +43,7 @@ public:
     const std::vector<uintptr_t>& init_array() const { return init_array_; }
     const std::vector<uintptr_t>& fini_array() const { return fini_array_; }
 
-    const std::map<std::string, Elf_Sym*>& GetSymbolMap() const { return syms_; }
+    const std::map<std::pair<std::string, int>, Elf_Sym*>& GetSymbolMap() const { return syms_; }
 
     Range GetRange() const;
 
@@ -59,7 +59,11 @@ public:
 
     const Elf_Phdr& GetPhdr(uint64_t type);
 
-    void parse_version();
+    void ParseVerneeds();
+
+    void ParseVersyms();
+
+    std::string showDynSymtab();
 
 private:
     void ParsePhdrs();
@@ -101,7 +105,14 @@ private:
     std::vector<uintptr_t> fini_array_;
 
     std::string name_;
-    std::map<std::string, Elf_Sym*> syms_;
+    // Map from (symbol, offset in .dynsymtab) to Elf_Sym*
+    std::map<std::pair<std::string, int>, Elf_Sym*> syms_;
+
+    int nsyms_{0};
+
+    Elf_Versym* versym_{nullptr};
+    Elf_Verneed* verneed_{nullptr};
+    Elf_Word verneednum_{0};
 };
 
 std::unique_ptr<ELFBinary> ReadELF(const std::string& filename);

@@ -219,6 +219,8 @@ public:
         CollectTLS();
         CollectArrays();
         CollectSymbols();
+        CollectVerneeds();
+        collectVersyms();
         CopyPublicSymbols();
         Relocate();
 
@@ -623,7 +625,27 @@ private:
         for (ELFBinary* bin : link_binaries_) {
             LoadDynSymtab(bin, &syms);
         }
+        LOGF("CollectSymbols\n");
+        for (auto it = syms.begin(); it != syms.end(); it++) {
+            LOGF("SYM %s\n", it->first.c_str());
+        }
         syms_.SetSrcSyms(syms);
+    }
+
+    void CollectVerneeds() {
+        LOGF("CollectVerneeds\n");
+        for (ELFBinary* bin : link_binaries_) {
+            LOGF("==== %s ====\n", bin->filename().c_str());
+            bin->ParseVerneeds();
+        }
+    }
+
+    void collectVersyms() {
+        LOGF("CollectVersyms\n");
+        for (ELFBinary* bin : link_binaries_) {
+            LOGF("==== %s ====\n", bin->filename().c_str());
+            bin->ParseVersyms();
+        }
     }
 
     uintptr_t RemapTLS(const char* msg, ELFBinary* bin, uintptr_t off) {
@@ -649,7 +671,7 @@ private:
         uintptr_t offset = offsets_[bin];
 
         for (const auto& p : bin->GetSymbolMap()) {
-            const std::string& name = p.first;
+            const std::string& name = p.first.first;
             Elf_Sym* sym = p.second;
             if (IsTLS(*sym)) {
                 sym->st_value = RemapTLS("symbol", bin, sym->st_value);
@@ -674,8 +696,8 @@ private:
         for (const auto& p : main_binary_->GetSymbolMap()) {
             const Elf_Sym* sym = p.second;
             if (ELF_ST_BIND(sym->st_info) == STB_GLOBAL && IsDefined(*sym)) {
-                LOGF("Copy public symbol %s\n", p.first.c_str());
-                syms_.AddPublicSymbol(p.first, *sym);
+                LOGF("Copy public symbol %s\n", p.first.first.c_str());
+                syms_.AddPublicSymbol(p.first.first, *sym);
             }
         }
         for (ELFBinary* bin : link_binaries_) {
@@ -683,8 +705,8 @@ private:
             for (const auto& p : bin->GetSymbolMap()) {
                 const Elf_Sym* sym = p.second;
                 if (IsTLS(*sym)) {
-                    LOGF("Copy TLS symbol %s\n", p.first.c_str());
-                    syms_.AddPublicSymbol(p.first, *sym);
+                    LOGF("Copy TLS symbol %s\n", p.first.first.c_str());
+                    syms_.AddPublicSymbol(p.first.first, *sym);
                 }
             }
         }

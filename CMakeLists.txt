@@ -17,6 +17,15 @@ add_executable(
   utils.cc
   )
 
+add_executable(
+  print_dynsymtab
+  print_dynsymtab.cc
+  elf_binary.cc
+  hash.cc
+  ldsoconf.cc
+  utils.cc
+  )
+
 add_subdirectory(tests)
 
 foreach(t exe hash)
