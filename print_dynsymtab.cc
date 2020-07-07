@@ -1,13 +1,14 @@
 #include "elf_binary.h"
 
+#include <iostream>
+
 int main(int argc, const char* argv[]) {
     if (argc != 2) {
-        LOGF("Usage: %s <in-elf>\n", argv[0]);
+        std::cerr << "Usage: " << argv[0] << " <in-elf>\nThis program parse DT_SYMTAB of the given ELF file." << std::endl;
         return 1;
     }
 
     auto b = ReadELF(argv[1]);
     b->ReadDynSymtab();
-    b->ParseVerneeds();
-    b->ParseVersyms();
+    std::cout << b->ShowDynSymtab();
 }

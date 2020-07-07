@@ -63,7 +63,9 @@ public:
 
     void ParseVersyms();
 
-    std::string showDynSymtab();
+    std::string ShowDynSymtab();
+
+    std::string ShowVersym(int index);
 
 private:
     void ParsePhdrs();

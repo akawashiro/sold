@@ -7,6 +7,8 @@
 #include <unistd.h>
 
 #include <cstring>
+#include <numeric>
+#include <sstream>
 
 ELFBinary::ELFBinary(const std::string& filename, int fd, char* head, size_t size)
     : filename_(filename), fd_(fd), head_(head), size_(size) {
@@ -72,7 +74,7 @@ void ELFBinary::ReadDynSymtab() {
                 // TODO(hamaji): Handle version symbols.
 
                 nsyms_++;
-                LOGF("%s@%s index in .dynsymtab = %d\n", name.c_str(), name_.c_str(), sym - symtab_);
+                LOGF("%s@%s index in .dynsymtab = %ld\n", name.c_str(), name_.c_str(), sym - symtab_);
                 CHECK(syms_.emplace(std::make_pair(name, sym - symtab_), sym).second);
                 if (h2 & 1) break;
             }
@@ -83,7 +85,7 @@ void ELFBinary::ReadDynSymtab() {
                 const std::string name(strtab_ + sym->st_name);
 
                 nsyms_++;
-                LOGF("%s@%s index in .dynsymtab = %d\n", name.c_str(), name_.c_str(), sym - symtab_);
+                LOGF("%s@%s index in .dynsymtab = %ld\n", name.c_str(), name_.c_str(), sym - symtab_);
                 CHECK(syms_.emplace(std::make_pair(name, sym - symtab_), sym).second);
             }
         }
@@ -97,7 +99,7 @@ void ELFBinary::ReadDynSymtab() {
             const std::string name(strtab_ + sym->st_name);
 
             nsyms_++;
-            LOGF("%s@%s index in .dynsymtab = %d\n", name.c_str(), name_.c_str(), sym - symtab_);
+            LOGF("%s@%s index in .dynsymtab = %ld\n", name.c_str(), name_.c_str(), sym - symtab_);
             CHECK(syms_.emplace(std::make_pair(name, sym - symtab_), sym).second);
         }
     }
@@ -154,6 +156,38 @@ void ELFBinary::ParseVerneeds() {
             vna = (Elf_Vernaux*)((char*)vna + vna->vna_next);
         }
         vn = (Elf_Verneed*)((char*)vn + vn->vn_next);
+    }
+}
+
+std::string ELFBinary::ShowVersym(int index) {
+    CHECK(0 < index && index <= nsyms_ + 1);
+    if (versym_[index] == VER_NDX_LOCAL) {
+        return std::string("VER_NDX_LOCAL");
+    } else if (versym_[index] == VER_NDX_GLOBAL) {
+        return std::string("VER_NDX_GLOBAL");
+    } else {
+        CHECK(verneed_);
+        Elf_Verneed* vn = verneed_;
+        for (int i = 0; i < verneednum_; ++i) {
+            LOGF("VERNEED: ver=%d cnt=%d file=%s aux=%d next=%d\n", vn->vn_version, vn->vn_cnt, strtab_ + vn->vn_file, vn->vn_aux,
+                 vn->vn_next);
+            Elf_Vernaux* vna = (Elf_Vernaux*)((char*)vn + vn->vn_aux);
+            for (int j = 0; j < vn->vn_cnt; ++j) {
+                LOGF(" VERNAUX: hash=%d flags=%d other=%d name=%s next=%d\n", vna->vna_hash, vna->vna_flags, vna->vna_other,
+                     strtab_ + vna->vna_name, vna->vna_next);
+
+                if (vna->vna_other == versym_[index]) {
+                    std::stringstream ss;
+                    ss << std::string(strtab_ + vna->vna_name) << " (" << versym_[index] << ")";
+                    return ss.str();
+                }
+
+                vna = (Elf_Vernaux*)((char*)vna + vna->vna_next);
+            }
+            vn = (Elf_Verneed*)((char*)vn + vn->vn_next);
+        }
+        LOGF("Failed to find Elf_Vernaux corresponds to %d\n", versym_[index]);
+        exit(1);
     }
 }
 
@@ -276,6 +310,24 @@ Elf_Addr ELFBinary::OffsetFromAddr(Elf_Addr addr) {
     abort();
 }
 
+std::string ELFBinary::ShowDynSymtab() {
+    LOGF("ShowDynSymtab\n");
+    std::vector<std::string> res(syms_.size() + 1);
+    for (auto it : syms_) {
+        std::stringstream ss;
+        ss << it.first.second << ": " << it.first.first << " ";
+
+        if (versym_) {
+            ss << ShowVersym(it.first.second) << "\n";
+        } else {
+            ss << "NO_VERSION_INFO\n";
+        }
+        res[it.first.second] = ss.str();
+    }
+
+    return std::accumulate(res.begin(), res.end(), std::string(""));
+}
+
 std::unique_ptr<ELFBinary> ReadELF(const std::string& filename) {
     int fd = open(filename.c_str(), O_RDONLY);
     if (fd < 0) err(1, "open failed: %s", filename.c_str());
@@ -292,8 +344,4 @@ std::unique_ptr<ELFBinary> ReadELF(const std::string& filename) {
         return std::make_unique<ELFBinary>(filename.c_str(), fd, p, mapped_size);
     }
     err(1, "unknown file format: %s", filename.c_str());
-}
-
-std::string showDynSymtab() {
-    std::vector < std::pair < std::string, for (auto it : syms_) {}
 }
