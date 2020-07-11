@@ -7,3 +7,4 @@
 - aarch64
 - exe
 - 32
+- shdr
