@@ -9,7 +9,6 @@
 #include <memory>
 #include <tuple>
 
-
 class ELFBinary {
 public:
     ELFBinary(const std::string& filename, int fd, char* head, size_t size);
@@ -69,9 +68,9 @@ public:
 
     std::string ShowVersym(int index);
 
-private:
     std::pair<std::string, std::string> GetVerneed(int index);
 
+private:
     void ParsePhdrs();
 
     void ParseDynamic(size_t off, size_t size);

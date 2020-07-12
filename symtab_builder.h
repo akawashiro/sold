@@ -14,9 +14,9 @@ public:
 
     void SetSrcSyms(std::vector<Syminfo> syms) { src_syms_ = syms; }
 
-    bool Resolve(const std::string& name, uintptr_t& val_or_index);
+    bool Resolve(const std::string& name, const std::string& filename, const std::string version_name, uintptr_t& val_or_index);
 
-    uintptr_t ResolveCopy(const std::string& name);
+    uintptr_t ResolveCopy(const std::string& name, const std::string& filename, const std::string version_name);
 
     void Build(StrtabBuilder& strtab);
 
@@ -41,7 +41,7 @@ private:
     };
 
     std::vector<Syminfo> src_syms_;
-    std::map<std::string, Symbol> syms_;
+    std::map<std::tuple<std::string, std::string, std::string>, Symbol> syms_;
 
     std::vector<Syminfo> exposed_syms_;
     std::vector<Elf_Sym> symtab_;

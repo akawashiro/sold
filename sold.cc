@@ -571,6 +571,8 @@ private:
 
     void RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t offset) {
         const Elf_Sym* sym = &bin->symtab()[ELF_R_SYM(rel->r_info)];
+        auto [filename, version_name] = bin->GetVerneed(ELF_R_SYM(rel->r_info));
+
         int type = ELF_R_TYPE(rel->r_info);
         const uintptr_t addend = rel->r_addend;
         Elf_Rel newrel = *rel;
@@ -595,7 +597,7 @@ private:
             case R_X86_64_GLOB_DAT:
             case R_X86_64_JUMP_SLOT: {
                 uintptr_t val_or_index;
-                if (syms_.Resolve(bin->Str(sym->st_name), val_or_index)) {
+                if (syms_.Resolve(bin->Str(sym->st_name), filename, version_name, val_or_index)) {
                     newrel.r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
                     newrel.r_addend = val_or_index;
                 } else {
@@ -606,7 +608,7 @@ private:
 
             case R_X86_64_64: {
                 uintptr_t val_or_index;
-                if (syms_.Resolve(bin->Str(sym->st_name), val_or_index)) {
+                if (syms_.Resolve(bin->Str(sym->st_name), filename, version_name, val_or_index)) {
                     newrel.r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
                     newrel.r_addend += val_or_index;
                 } else {
@@ -619,7 +621,7 @@ private:
             case R_X86_64_DTPOFF64:
             case R_X86_64_COPY: {
                 const std::string name = bin->Str(sym->st_name);
-                uintptr_t index = syms_.ResolveCopy(name);
+                uintptr_t index = syms_.ResolveCopy(name, filename, version_name);
                 newrel.r_info = ELF_R_INFO(index, type);
                 break;
             }
