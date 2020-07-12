@@ -123,8 +123,8 @@ void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab) {
     gnu_hash_.shift2 = 1;
 
     for (const auto& p : public_syms_) {
-        const std::string& name = p.first;
-        Elf_Sym sym = p.second;
+        const std::string& name = p.name;
+        Elf_Sym sym = *p.sym;
         sym.st_name = strtab.Add(name);
         sym.st_shndx = 1;
 

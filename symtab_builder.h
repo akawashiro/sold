@@ -22,7 +22,7 @@ public:
 
     void MergePublicSymbols(StrtabBuilder& strtab);
 
-    void AddPublicSymbol(const std::string& name, Elf_Sym sym) { public_syms_.emplace(name, sym); }
+    void AddPublicSymbol(Syminfo s) { public_syms_.push_back(s); }
 
     uintptr_t size() const { return symtab_.size() + public_syms_.size(); }
 
@@ -45,7 +45,7 @@ private:
 
     std::vector<Syminfo> exposed_syms_;
     std::vector<Elf_Sym> symtab_;
-    std::map<std::string, Elf_Sym> public_syms_;
+    std::vector<Syminfo> public_syms_;
 
     Elf_GnuHash gnu_hash_;
 

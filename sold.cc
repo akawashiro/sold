@@ -533,7 +533,7 @@ private:
             const Elf_Sym* sym = p.sym;
             if (ELF_ST_BIND(sym->st_info) == STB_GLOBAL && IsDefined(*sym)) {
                 LOGF("Copy public symbol %s\n", p.name.c_str());
-                syms_.AddPublicSymbol(p.name, *sym);
+                syms_.AddPublicSymbol(p);
             }
         }
         for (ELFBinary* bin : link_binaries_) {
@@ -542,7 +542,7 @@ private:
                 const Elf_Sym* sym = p.sym;
                 if (IsTLS(*sym)) {
                     LOGF("Copy TLS symbol %s\n", p.name.c_str());
-                    syms_.AddPublicSymbol(p.name, *sym);
+                    syms_.AddPublicSymbol(p);
                 }
             }
         }
