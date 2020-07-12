@@ -48,7 +48,7 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& filename
                 LOGF("Symbol %s found\n", name.c_str());
             } else {
                 LOGF("Symbol (undef/weak) %s found\n", name.c_str());
-                Syminfo s{name, filename, version_name, 0, NULL};
+                Syminfo s{name, filename, version_name, found->ver, NULL};
                 sym.index = AddSym(s);
                 CHECK(syms_.emplace(std::make_tuple(name, filename, version_name), sym).second);
             }
@@ -93,7 +93,7 @@ uintptr_t SymtabBuilder::ResolveCopy(const std::string& name, const std::string&
         if (found != NULL) {
             LOGF("Symbol %s found for copy\n", name.c_str());
             sym.sym = *found->sym;
-            Syminfo s{name, filename, version_name, 0, NULL};
+            Syminfo s{name, filename, version_name, found->ver, NULL};
             sym.index = AddSym(s);
             CHECK(syms_.emplace(std::make_tuple(name, filename, version_name), sym).second);
         } else {
@@ -105,17 +105,19 @@ uintptr_t SymtabBuilder::ResolveCopy(const std::string& name, const std::string&
     return sym.index;
 }
 
-void SymtabBuilder::Build(StrtabBuilder& strtab) {
+void SymtabBuilder::Build(StrtabBuilder& strtab, VersionBuilder& version) {
     for (const auto& s : exposed_syms_) {
         auto found = syms_.find({s.name, s.filename, s.version_name});
         CHECK(found != syms_.end());
         Elf_Sym sym = found->second.sym;
         sym.st_name = strtab.Add(s.name);
         symtab_.push_back(sym);
+
+        version.Add(s.ver, s.filename, s.version_name, strtab);
     }
 }
 
-void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab) {
+void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& version) {
     gnu_hash_.nbuckets = 1;
     CHECK(symtab_.size() <= std::numeric_limits<uint32_t>::max());
     gnu_hash_.symndx = symtab_.size();
@@ -132,6 +134,8 @@ void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab) {
         Syminfo s{p.name, p.filename, p.version_name, 0, sym};
         exposed_syms_.push_back(s);
         symtab_.push_back(*sym);
+
+        version.Add(s.ver, s.filename, s.version_name, strtab);
     }
     public_syms_.clear();
 }

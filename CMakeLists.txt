@@ -17,6 +17,7 @@ add_executable(
   strtab_builder.cc
   symtab_builder.cc
   utils.cc
+  version_builder.cc
   )
 
 add_executable(
@@ -28,6 +29,7 @@ add_executable(
   strtab_builder.cc
   symtab_builder.cc
   utils.cc
+  version_builder.cc
   )
 
 add_subdirectory(tests)

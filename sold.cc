@@ -29,6 +29,7 @@
 #include "strtab_builder.h"
 #include "symtab_builder.h"
 #include "utils.h"
+#include "version_builder.h"
 
 class Sold {
 public:
@@ -51,8 +52,8 @@ public:
         CopyPublicSymbols();
         Relocate();
 
-        syms_.Build(strtab_);
-        syms_.MergePublicSymbols(strtab_);
+        syms_.Build(strtab_, version_);
+        syms_.MergePublicSymbols(strtab_, version_);
 
         BuildEhdr();
         if (is_executable_) {
@@ -767,6 +768,7 @@ private:
     SymtabBuilder syms_;
     std::vector<Elf_Rel> rels_;
     StrtabBuilder strtab_;
+    VersionBuilder version_;
     Elf_Ehdr ehdr_;
     std::vector<Load> loads_;
     std::vector<Elf_Dyn> dynamic_;

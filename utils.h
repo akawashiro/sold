@@ -32,11 +32,13 @@
 const bool FLAGS_LOG{true};
 
 #ifdef NOLOG
-#define LOGF(...) \
-    if (0) fprintf(stderr, __VA_ARGS__)
+#define LOGF(...)                                           \
+    if (0) fprintf(stderr, "%s, %d: ", __FILE__, __LINE__); \
+    fprintf(stderr, __VA_ARGS__)
 #else
-#define LOGF(...) \
-    if (FLAGS_LOG) fprintf(stderr, __VA_ARGS__)
+#define LOGF(...)                                                   \
+    if (FLAGS_LOG) fprintf(stderr, "%s, %d: ", __FILE__, __LINE__); \
+    fprintf(stderr, __VA_ARGS__)
 #endif
 
 std::vector<std::string> SplitString(const std::string& str, const std::string& sep);

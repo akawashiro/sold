@@ -7,6 +7,7 @@
 #include "hash.h"
 #include "strtab_builder.h"
 #include "utils.h"
+#include "version_builder.h"
 
 class SymtabBuilder {
 public:
@@ -18,9 +19,9 @@ public:
 
     uintptr_t ResolveCopy(const std::string& name, const std::string& filename, const std::string version_name);
 
-    void Build(StrtabBuilder& strtab);
+    void Build(StrtabBuilder& strtab, VersionBuilder& version);
 
-    void MergePublicSymbols(StrtabBuilder& strtab);
+    void MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& version);
 
     void AddPublicSymbol(Syminfo s) { public_syms_.push_back(s); }
 
