@@ -329,10 +329,10 @@ private:
         uint32_t bucket = gnu_hash.symndx;
         Write(fp, bucket);
 
-        const std::vector<std::string>& sym_names = syms_.GetNames();
-        for (size_t i = gnu_hash.symndx; i < sym_names.size(); ++i) {
-            uint32_t h = CalcGnuHash(sym_names[i]) & ~1;
-            if (i == sym_names.size() - 1) {
+        const std::vector<Syminfo>& exposed_syms = syms_.GetExposedSyms();
+        for (size_t i = gnu_hash.symndx; i < exposed_syms.size(); ++i) {
+            uint32_t h = CalcGnuHash(exposed_syms[i].name) & ~1;
+            if (i == exposed_syms.size() - 1) {
                 h |= 1;
             }
             Write(fp, h);
@@ -448,13 +448,13 @@ private:
     }
 
     void CollectSymbols() {
-        std::map<std::string, Elf_Sym*> syms;
+        std::vector<Syminfo> syms;
         for (ELFBinary* bin : link_binaries_) {
-            LoadDynSymtab(bin, &syms);
+            LoadDynSymtab(bin, syms);
         }
         LOGF("CollectSymbols\n");
-        for (auto it = syms.begin(); it != syms.end(); it++) {
-            LOGF("SYM %s\n", it->first.c_str());
+        for (auto s : syms) {
+            LOGF("SYM %s\n", s.name.c_str());
         }
         syms_.SetSrcSyms(syms);
     }
@@ -492,7 +492,7 @@ private:
         return off;
     }
 
-    void LoadDynSymtab(ELFBinary* bin, std::map<std::string, Elf_Sym*>* symtab) {
+    void LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab) {
         bin->ReadDynSymtab();
 
         uintptr_t offset = offsets_[bin];
@@ -507,13 +507,22 @@ private:
             }
             LOGF("Symbol %s@%s %08lx\n", name.c_str(), bin->name().c_str(), sym->st_value);
 
-            auto inserted = symtab->emplace(name, sym);
-            if (!inserted.second) {
-                Elf_Sym* sym2 = inserted.first->second;
+            Syminfo* found = NULL;
+            for (int i = 0; i < symtab.size(); i++) {
+                if (symtab[i].name == p.name && symtab[i].filename == p.filename && symtab[i].version_name == p.version_name) {
+                    found = &symtab[i];
+                    break;
+                }
+            }
+
+            if (found == NULL) {
+                symtab.push_back(p);
+            } else {
+                Elf_Sym* sym2 = found->sym;
                 int prio = IsDefined(*sym) ? 2 : ELF_ST_BIND(sym->st_info) == STB_WEAK;
                 int prio2 = IsDefined(*sym2) ? 2 : ELF_ST_BIND(sym2->st_info) == STB_WEAK;
                 if (prio > prio2) {
-                    inserted.first->second = sym;
+                    found->sym = sym;
                 }
             }
         }

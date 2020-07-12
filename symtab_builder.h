@@ -12,7 +12,7 @@ class SymtabBuilder {
 public:
     SymtabBuilder();
 
-    void SetSrcSyms(std::map<std::string, Elf_Sym*> syms) { src_syms_ = syms; }
+    void SetSrcSyms(std::vector<Syminfo> syms) { src_syms_ = syms; }
 
     bool Resolve(const std::string& name, uintptr_t& val_or_index);
 
@@ -32,7 +32,7 @@ public:
 
     const std::vector<Elf_Sym>& Get() { return symtab_; }
 
-    const std::vector<std::string>& GetNames() const { return sym_names_; }
+    const std::vector<Syminfo>& GetExposedSyms() const { return exposed_syms_; }
 
 private:
     struct Symbol {
@@ -40,14 +40,14 @@ private:
         uintptr_t index;
     };
 
-    std::map<std::string, Elf_Sym*> src_syms_;
+    std::vector<Syminfo> src_syms_;
     std::map<std::string, Symbol> syms_;
 
-    std::vector<std::string> sym_names_;
+    std::vector<Syminfo> exposed_syms_;
     std::vector<Elf_Sym> symtab_;
     std::map<std::string, Elf_Sym> public_syms_;
 
     Elf_GnuHash gnu_hash_;
 
-    uintptr_t AddSym(const std::string& name);
+    uintptr_t AddSym(const Syminfo& sym);
 };

@@ -3,14 +3,22 @@
 #include <limits>
 
 SymtabBuilder::SymtabBuilder() {
-    Symbol sym = {0};
-    AddSym("");
+    Syminfo si;
+    si.name = "";
+    si.filename = "";
+    si.version_name = "";
+    si.ver = 0;
+    si.sym = NULL;
+
+    Symbol sym{};
+
+    AddSym(si);
     CHECK(syms_.emplace("", sym).second);
 }
 
-uintptr_t SymtabBuilder::AddSym(const std::string& name) {
-    uintptr_t index = sym_names_.size();
-    sym_names_.push_back(name);
+uintptr_t SymtabBuilder::AddSym(const Syminfo& sym) {
+    uintptr_t index = exposed_syms_.size();
+    exposed_syms_.push_back(sym);
     return index;
 }
 
@@ -27,19 +35,27 @@ bool SymtabBuilder::Resolve(const std::string& name, uintptr_t& val_or_index) {
     if (found != syms_.end()) {
         sym = found->second;
     } else {
-        auto found = src_syms_.find(name);
-        if (found != src_syms_.end()) {
-            sym.sym = *found->second;
+        Syminfo* found = NULL;
+        for (int i = 0; i < src_syms_.size(); i++) {
+            if (src_syms_[i].name == name) {
+                found = &src_syms_[i];
+            }
+        }
+
+        if (found != NULL) {
+            sym.sym = *found->sym;
             if (IsDefined(sym.sym)) {
                 LOGF("Symbol %s found\n", name.c_str());
             } else {
                 LOGF("Symbol (undef/weak) %s found\n", name.c_str());
-                sym.index = AddSym(name);
+                Syminfo s{name, "", "", 0, NULL};
+                sym.index = AddSym(s);
                 CHECK(syms_.emplace(name, sym).second);
             }
         } else {
             LOGF("Symbol %s not found\n", name.c_str());
-            sym.index = AddSym(name);
+            Syminfo s{name, "", "", 0, NULL};
+            sym.index = AddSym(s);
             CHECK(syms_.emplace(name, sym).second);
         }
     }
@@ -67,11 +83,18 @@ uintptr_t SymtabBuilder::ResolveCopy(const std::string& name) {
     if (found != syms_.end()) {
         sym = found->second;
     } else {
-        auto found = src_syms_.find(name);
-        if (found != src_syms_.end()) {
+        Syminfo* found = NULL;
+        for (int i = 0; i < src_syms_.size(); i++) {
+            if (src_syms_[i].name == name) {
+                found = &src_syms_[i];
+            }
+        }
+
+        if (found != NULL) {
             LOGF("Symbol %s found for copy\n", name.c_str());
-            sym.sym = *found->second;
-            sym.index = AddSym(name);
+            sym.sym = *found->sym;
+            Syminfo s{name, "", "", 0, NULL};
+            sym.index = AddSym(s);
             CHECK(syms_.emplace(name, sym).second);
         } else {
             LOGF("Symbol %s not found for copy\n", name.c_str());
@@ -83,11 +106,11 @@ uintptr_t SymtabBuilder::ResolveCopy(const std::string& name) {
 }
 
 void SymtabBuilder::Build(StrtabBuilder& strtab) {
-    for (const std::string& name : sym_names_) {
-        auto found = syms_.find(name);
+    for (const auto& s : exposed_syms_) {
+        auto found = syms_.find(s.name);
         CHECK(found != syms_.end());
         Elf_Sym sym = found->second.sym;
-        sym.st_name = strtab.Add(name);
+        sym.st_name = strtab.Add(s.name);
         symtab_.push_back(sym);
     }
 }
@@ -104,7 +127,9 @@ void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab) {
         Elf_Sym sym = p.second;
         sym.st_name = strtab.Add(name);
         sym.st_shndx = 1;
-        sym_names_.push_back(name);
+
+        Syminfo s{name, "", "", 0, NULL};
+        exposed_syms_.push_back(s);
         symtab_.push_back(sym);
     }
     public_syms_.clear();
