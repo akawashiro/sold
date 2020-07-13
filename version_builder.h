@@ -69,6 +69,7 @@ public:
             v.vn_version = 1;
             v.vn_cnt = m1.second.size();
             v.vn_file = strtab.GetPos(m1.first);
+            v.vn_aux = sizeof(Elf_Verneed);
             v.vn_next = (n_verneed == data.size()) ? 0 : sizeof(Elf_Verneed) + m1.second.size() * sizeof(Elf_Vernaux);
 
             CHECK(fwrite(&v, sizeof(v), 1, fp) == 1);
