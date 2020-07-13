@@ -13,3 +13,12 @@ uintptr_t StrtabBuilder::Add(const std::string& s) {
     cache[s] = pos;
     return pos;
 }
+
+uintptr_t StrtabBuilder::GetPos(const std::string& s) {
+    if (cache.find(s) != cache.end()) {
+        return cache[s];
+    } else {
+        LOGF("%s is not in StrtabBuilder.\n", s.c_str());
+        CHECK(false);
+    }
+}

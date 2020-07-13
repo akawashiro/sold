@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdio.h>
+
 #include <map>
 
 #include "hash.h"
@@ -9,7 +11,6 @@
 class VersionBuilder {
 public:
     void Add(Elf_Versym ver, std::string filename, std::string version_name, StrtabBuilder& strtab) {
-        if (name != "") strtab.Add(name);
         if (filename != "") strtab.Add(filename);
         if (version_name != "") strtab.Add(version_name);
 
@@ -44,7 +45,7 @@ public:
         uintptr_t s = 0;
         for (const auto& m1 : data) {
             s += sizeof(Elf_Verneed);
-            for (const auto& m2 : m1) {
+            for (const auto& m2 : m1.second) {
                 s += sizeof(Elf_Vernaux);
             }
         }
@@ -59,26 +60,32 @@ public:
         }
     }
 
-    void EmitVerneed(File* fp, StrtabBuilder& strtab) {
+    void EmitVerneed(FILE* fp, StrtabBuilder& strtab) {
+        int n_verneed = 0;
         for (const auto& m1 : data) {
+            n_verneed++;
+
             Elf_Verneed v;
             v.vn_version = 1;
-            v.vn_cnt = m1.size();
-            v.vn_file = strtab.Add(m1.first);
-            v.vn_next = m1.size() * sizeof(Elf64_Vernaux);
+            v.vn_cnt = m1.second.size();
+            v.vn_file = strtab.GetPos(m1.first);
+            v.vn_next = (n_verneed == data.size()) ? 0 : sizeof(Elf_Verneed) + m1.second.size() * sizeof(Elf_Vernaux);
 
             CHECK(fwrite(&v, sizeof(v), 1, fp) == 1);
 
-            for (const auto& m2 : m1) {
+            int n_vernaux = 0;
+            for (const auto& m2 : m1.second) {
+                n_vernaux++;
+
                 Elf_Vernaux a;
                 a.vna_hash = CalcHash(m2.first);
-                a.vna_flags = ????;
+                a.vna_flags = 0;  // TODO(akawashiro) check formal document
                 a.vna_other = m2.second;
-                a.vna_name = strtab.Add(m2.first);
-                a.vna_next = sizeof(Elf_Vernaux);
-            }
+                a.vna_name = strtab.GetPos(m2.first);
+                a.vna_next = (n_vernaux == m1.second.size()) ? 0 : sizeof(Elf_Vernaux);
 
-            CHECK(fwrite(&a, sizeof(a), 1, fp) == 1);
+                CHECK(fwrite(&a, sizeof(a), 1, fp) == 1);
+            }
         }
     }
 
