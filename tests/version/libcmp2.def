@@ -1,0 +1,7 @@
+LIBCMP_1.0{
+    global: cmp;
+    local: *;
+};
+LIBCMP_2.0{
+    global: cmp;
+} LIBCMP_1.0;

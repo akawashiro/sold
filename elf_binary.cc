@@ -62,13 +62,19 @@ void ELFBinary::ReadDynSymtab() {
     CHECK(symtab_);
     LOGF("Read dynsymtab of %s\n", name().c_str());
     if (gnu_hash_) {
+        LOGF("gnu_hash_\n");
         const uint32_t* buckets = gnu_hash_->buckets();
         const uint32_t* hashvals = gnu_hash_->hashvals();
+        LOGF("gnu_hash_->nbuckets = %d, gnu_hash_->symndx = %d\n", gnu_hash_->nbuckets, gnu_hash_->symndx);
         for (int i = 0; i < gnu_hash_->nbuckets; ++i) {
             int n = buckets[i];
+            LOGF("n = %d\n", n);
             if (!n) continue;
             const uint32_t* hv = &hashvals[n - gnu_hash_->symndx];
             for (Elf_Sym* sym = &symtab_[n];; ++sym) {
+                if (sym->st_shndx == SHN_ABS) continue;
+                LOGF("sym->st_size = %d, sym->st_shndx = %d\n", sym->st_size, sym->st_shndx);
+
                 uint32_t h2 = *hv++;
                 const std::string name(strtab_ + sym->st_name);
                 // TODO(hamaji): Handle version symbols.
@@ -83,6 +89,9 @@ void ELFBinary::ReadDynSymtab() {
         }
         for (size_t n = 0; n < gnu_hash_->symndx; ++n) {
             Elf_Sym* sym = &symtab_[n];
+            if (sym->st_shndx == SHN_ABS) continue;
+            LOGF("sym->st_size = %d, sym->st_shndx = %d\n", sym->st_size, sym->st_shndx);
+
             if (sym->st_name) {
                 const std::string name(strtab_ + sym->st_name);
 
@@ -93,13 +102,20 @@ void ELFBinary::ReadDynSymtab() {
                 syms_.push_back(Syminfo{name, p.first, p.second, v, sym});
             }
         }
-    } else {
+    }
+    if (hash_) {
+        LOGF("hash_\n");
         CHECK(hash_);
         const uint32_t* buckets = hash_->buckets();
+        LOGF("hash_->nbuckets = %d\n", hash_->nbuckets);
         for (size_t i = 0; i < hash_->nbuckets; ++i) {
             int n = buckets[i];
             Elf_Sym* sym = &symtab_[n];
+            if (sym->st_shndx == SHN_ABS) continue;
+            LOGF("sym->st_size = %d, sym->st_shndx = %d\n", sym->st_size, sym->st_shndx);
+
             if (sym->st_name == 0) continue;
+
             const std::string name(strtab_ + sym->st_name);
 
             nsyms_++;
@@ -131,7 +147,10 @@ std::pair<std::string, std::string> ELFBinary::GetVerneed(int index) {
     LOGF("GetVerneed\n");
     if (!versym_) {
         return std::make_pair("", "");
-    } else if (versym_[index] == VER_NDX_LOCAL) {
+    }
+
+    LOGF("GetVerneed versym_[index] = %d\n", versym_[index]);
+    if (versym_[index] == VER_NDX_LOCAL) {
         return std::make_pair("", "");
     } else if (versym_[index] == VER_NDX_GLOBAL) {
         return std::make_pair("", "");
