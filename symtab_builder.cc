@@ -107,6 +107,8 @@ uintptr_t SymtabBuilder::ResolveCopy(const std::string& name, const std::string&
 
 void SymtabBuilder::Build(StrtabBuilder& strtab, VersionBuilder& version) {
     for (const auto& s : exposed_syms_) {
+        LOGF("SymtabBuilder::Build %s\n", s.name.c_str());
+
         auto found = syms_.find({s.name, s.filename, s.version_name});
         CHECK(found != syms_.end());
         Elf_Sym sym = found->second.sym;
@@ -125,6 +127,8 @@ void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& ve
     gnu_hash_.shift2 = 1;
 
     for (const auto& p : public_syms_) {
+        LOGF("SymtabBuilder::MergePublicSymbols %s\n", p.name.c_str());
+
         const std::string& name = p.name;
         Elf_Sym* sym = new Elf_Sym;
         *sym = *p.sym;

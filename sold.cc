@@ -102,6 +102,7 @@ private:
         EmitPhdrs(fp);
         EmitGnuHash(fp);
         EmitSymtab(fp);
+        version_.EmitVersym(fp);
         EmitRel(fp);
         EmitArrays(fp);
         EmitStrtab(fp);
@@ -130,7 +131,9 @@ private:
 
     uintptr_t SymtabOffset() const { return GnuHashOffset() + syms_.GnuHashSize(); }
 
-    uintptr_t RelOffset() const { return SymtabOffset() + syms_.size() * sizeof(Elf_Sym); }
+    uintptr_t VersymOffset() const { return SymtabOffset() + syms_.size() * sizeof(Elf_Sym); }
+
+    uintptr_t RelOffset() const { return VersymOffset() + version_.SizeVersym(); }
 
     uintptr_t InitArrayOffset() const { return AlignNext(RelOffset() + rels_.size() * sizeof(Elf_Rel), 7); }
 
@@ -249,6 +252,9 @@ private:
 
         MakeDyn(DT_SYMTAB, SymtabOffset());
         MakeDyn(DT_SYMENT, sizeof(Elf_Sym));
+
+        MakeDyn(DT_VERSYM, VersymOffset());
+        MakeDyn(DT_VERNEEDNUM, version_.NumVerneed());
 
         MakeDyn(DT_RELA, RelOffset());
         MakeDyn(DT_RELAENT, sizeof(Elf_Rel));
