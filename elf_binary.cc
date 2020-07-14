@@ -173,7 +173,8 @@ std::pair<std::string, std::string> ELFBinary::GetVerneed(int index) {
             vn = (Elf_Verneed*)((char*)vn + vn->vn_next);
         }
         LOGF("Failed to find Elf_Vernaux corresponds to %d\n", versym_[index]);
-        exit(1);
+        return std::make_pair("", "");
+        // exit(1);
     }
 }
 
