@@ -64,6 +64,8 @@ public:
 
     void PrintVersyms();
 
+    void PrintVerdefs();
+
     std::string ShowDynSymtab();
 
     std::string ShowVersym(int index);
@@ -117,6 +119,8 @@ private:
     Elf_Versym* versym_{nullptr};
     Elf_Verneed* verneed_{nullptr};
     Elf_Word verneednum_{0};
+    Elf64_Verdef* verdef_{nullptr};
+    Elf_Word verdefnum_{0};
 };
 
 std::unique_ptr<ELFBinary> ReadELF(const std::string& filename);

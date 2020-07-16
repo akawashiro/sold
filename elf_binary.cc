@@ -73,6 +73,7 @@ void ELFBinary::ReadDynSymtab() {
             const uint32_t* hv = &hashvals[n - gnu_hash_->symndx];
             for (Elf_Sym* sym = &symtab_[n];; ++sym) {
                 if (sym->st_shndx == SHN_ABS) continue;
+                LOGF("SHN_ABS = %d\n", SHN_ABS);
                 LOGF("sym->st_size = %d, sym->st_shndx = %d\n", sym->st_size, sym->st_shndx);
 
                 uint32_t h2 = *hv++;
@@ -144,6 +145,8 @@ const Elf_Phdr& ELFBinary::GetPhdr(uint64_t type) {
 }
 
 std::pair<std::string, std::string> ELFBinary::GetVerneed(int index) {
+    return std::make_pair("", "");
+
     LOGF("GetVerneed\n");
     if (!versym_) {
         return std::make_pair("", "");
@@ -205,6 +208,22 @@ void ELFBinary::PrintVerneeds() {
             vna = (Elf_Vernaux*)((char*)vna + vna->vna_next);
         }
         vn = (Elf_Verneed*)((char*)vn + vn->vn_next);
+    }
+}
+
+void ELFBinary::PrintVerdefs() {
+    LOGF("PrintVerdefs\n");
+    CHECK(verdef_);
+    CHECK(verdefnum_ != 0);
+    Elf64_Verdef* vd = verdef_;
+    for (int i = 0; i < verdefnum_; i++) {
+        LOGF("VERDEF: version = %d, flags = %d, ndx = %d, hash = %d\n", vd->vd_version, vd->vd_flags, vd->vd_ndx, vd->vd_hash);
+        Elf64_Verdaux* vda = (Elf64_Verdaux*)((char*)vd + vd->vd_aux);
+        for (int j = 0; j < vd->vd_cnt; j++) {
+            LOGF("    VERDAUX: name = %s\n", strtab_ + vda->vda_name);
+            vda = (Elf64_Verdaux*)((char*)vda + vda->vda_next);
+        }
+        vd = (Elf64_Verdef*)((char*)vd + vd->vd_next);
     }
 }
 
@@ -318,6 +337,14 @@ void ELFBinary::ParseDynamic(size_t off, size_t size) {
         } else if (dyn->d_tag == DT_VERNEEDNUM) {
             verneednum_ = dyn->d_un.d_val;
             LOGF("verneednum_ = %d\n", verneednum_);
+        } else if (dyn->d_tag == DT_VERDEF) {
+            verdef_ = reinterpret_cast<Elf64_Verdef*>(get_ptr());
+            LOGF("Found DT_VERDEF\n");
+        } else if (dyn->d_tag == DT_VERDEFNUM) {
+            verdefnum_ = dyn->d_un.d_val;
+            LOGF("Found DT_VERDEFNUM = %d\n", verdefnum_);
+        } else if (dyn->d_tag == DT_VERSYM) {
+            LOGF("Found DT_VERSYM\n");
         }
     }
     CHECK(strtab_);

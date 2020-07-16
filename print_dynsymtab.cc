@@ -19,6 +19,7 @@ int main(int argc, const char* argv[]) {
     }
 
     auto b = ReadELF(argv[1]);
+    b->PrintVerdefs();
     b->ReadDynSymtab();
     std::cout << b->ShowDynSymtab();
 }
