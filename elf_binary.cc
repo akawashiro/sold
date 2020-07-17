@@ -58,6 +58,7 @@ void ELFBinary::ReadDynSymtab() {
     CHECK(symtab_);
     LOGF("Read dynsymtab of %s\n", name().c_str());
     if (gnu_hash_) {
+        LOGF("gnu_hash_\n");
         const uint32_t* buckets = gnu_hash_->buckets();
         const uint32_t* hashvals = gnu_hash_->hashvals();
         for (int i = 0; i < gnu_hash_->nbuckets; ++i) {
@@ -90,6 +91,7 @@ void ELFBinary::ReadDynSymtab() {
             }
         }
     } else {
+        LOGF("hash_\n");
         CHECK(hash_);
         const uint32_t* buckets = hash_->buckets();
         for (size_t i = 0; i < hash_->nbuckets; ++i) {
