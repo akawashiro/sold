@@ -1,13 +1,13 @@
 #pragma once
 
-#include <stdint.h>
+#include <map>
 #include <string>
-
-#include "utils.h"
 
 class StrtabBuilder {
 public:
     uintptr_t Add(const std::string& s);
+
+    uintptr_t GetPos(const std::string& s);
 
     void Freeze() { is_freezed_ = true; }
 
@@ -17,5 +17,6 @@ public:
 
 private:
     std::string strtab_;
+    std::map<std::string, uintptr_t> cache;
     bool is_freezed_{false};
 };
