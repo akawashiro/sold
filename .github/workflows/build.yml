@@ -27,3 +27,5 @@ jobs:
       run: cd tests/simple-lib-gcc && ./test.sh
     - name: simple-lib-g++
       run: cd tests/simple-lib-g++ && ./test.sh
+    - name: TestVersion
+      run: cd tests && ./test-versions.sh
