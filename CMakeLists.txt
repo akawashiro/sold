@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(sold LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -16,6 +16,7 @@ add_library(
   strtab_builder.cc
   symtab_builder.cc
   utils.cc
+  version_builder.cc
   )
 
 add_executable(
