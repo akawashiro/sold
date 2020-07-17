@@ -146,6 +146,40 @@ const Elf_Phdr& ELFBinary::GetPhdr(uint64_t type) {
     return *phdr;
 }
 
+std::pair<std::string, std::string> ELFBinary::GetVerneed(int index) {
+    LOGF("GetVerneed\n");
+    if (!versym_) {
+        return std::make_pair("", "");
+    }
+
+    LOGF("GetVerneed versym_[index] = %d\n", versym_[index]);
+    if (versym_[index] == VER_NDX_LOCAL) {
+        return std::make_pair("", "");
+    } else if (versym_[index] == VER_NDX_GLOBAL) {
+        return std::make_pair("", "");
+    } else {
+        CHECK(verneed_);
+        Elf_Verneed* vn = verneed_;
+        for (int i = 0; i < verneednum_; ++i) {
+            LOGF("VERNEED: ver=%d cnt=%d file=%s aux=%d next=%d\n", vn->vn_version, vn->vn_cnt, strtab_ + vn->vn_file, vn->vn_aux,
+                 vn->vn_next);
+            Elf_Vernaux* vna = (Elf_Vernaux*)((char*)vn + vn->vn_aux);
+            for (int j = 0; j < vn->vn_cnt; ++j) {
+                LOGF(" VERNAUX: hash=%d flags=%d other=%d name=%s next=%d\n", vna->vna_hash, vna->vna_flags, vna->vna_other,
+                     strtab_ + vna->vna_name, vna->vna_next);
+                if (vna->vna_other == versym_[index]) {
+                    return std::make_pair(std::string(strtab_ + vn->vn_file), std::string(strtab_ + vna->vna_name));
+                }
+
+                vna = (Elf_Vernaux*)((char*)vna + vna->vna_next);
+            }
+            vn = (Elf_Verneed*)((char*)vn + vn->vn_next);
+        }
+        LOGF("Failed to find Elf_Vernaux corresponds to %d\n", versym_[index]);
+        return std::make_pair("", "");
+    }
+}
+
 void ELFBinary::PrintVersyms() {
     if (!versym_ || !nsyms_) return;
 
@@ -285,6 +319,7 @@ void ELFBinary::ParseDynamic(size_t off, size_t size) {
             verneed_ = reinterpret_cast<Elf_Verneed*>(get_ptr());
         } else if (dyn->d_tag == DT_VERNEEDNUM) {
             verneednum_ = dyn->d_un.d_val;
+            LOGF("verneednum_ = %d\n", verneednum_);
         }
     }
     CHECK(strtab_);
