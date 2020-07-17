@@ -43,7 +43,7 @@ public:
     const std::vector<uintptr_t>& init_array() const { return init_array_; }
     const std::vector<uintptr_t>& fini_array() const { return fini_array_; }
 
-    const std::map<std::pair<std::string, int>, Elf_Sym*>& GetSymbolMap() const { return syms_; }
+    const std::vector<Syminfo>& GetSymbolMap() const { return syms_; }
 
     Range GetRange() const;
 
@@ -68,6 +68,8 @@ public:
     std::string ShowDtRela();
 
     std::string ShowVersym(int index);
+
+    std::pair<std::string, std::string> GetVerneed(int index);
 
 private:
     void ParsePhdrs();
@@ -109,8 +111,7 @@ private:
     std::vector<uintptr_t> fini_array_;
 
     std::string name_;
-    // Map from (symbol, offset in .dynsymtab) to Elf_Sym*
-    std::map<std::pair<std::string, int>, Elf_Sym*> syms_;
+    std::vector<Syminfo> syms_;
 
     int nsyms_{0};
 

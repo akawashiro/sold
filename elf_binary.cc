@@ -125,7 +125,12 @@ void ELFBinary::ReadDynSymtab() {
 
         nsyms_++;
         LOGF("%s@%s index in .dynsym = %d\n", name.c_str(), name_.c_str(), idx);
-        CHECK(syms_.emplace(std::make_pair(name, idx), sym).second);
+
+        // Get version information coresspoinds to idx
+        auto p = GetVerneed(idx);
+        Elf_Versym v = (versym_) ? versym_[idx] : -1;
+
+        syms_.push_back(Syminfo{name, p.first, p.second, v, sym});
     }
 
     LOGF("nsyms_ = %d\n", nsyms_);
@@ -359,20 +364,23 @@ Elf_Addr ELFBinary::OffsetFromAddr(Elf_Addr addr) {
 
 std::string ELFBinary::ShowDynSymtab() {
     LOGF("ShowDynSymtab\n");
-    std::vector<std::string> res(syms_.size() + 1);
+    std::stringstream ss;
     for (auto it : syms_) {
-        std::stringstream ss;
-        ss << it.first.second << ": " << it.first.first << " ";
+        ss << it.name << ": ";
 
-        if (versym_) {
-            ss << ShowVersym(it.first.second) << "\n";
+        if (it.ver == -1) {
+            ss << "NO_VERSION_INFO";
+        } else if (it.ver == VER_NDX_LOCAL) {
+            ss << "VER_NDX_LOCAL";
+        } else if (it.ver == VER_NDX_GLOBAL) {
+            ss << "VER_NDX_GLOBAL";
         } else {
-            ss << "NO_VERSION_INFO\n";
+            ss << it.filename << " " << it.version_name;
         }
-        res[it.first.second] = ss.str();
+        ss << "\n";
     }
 
-    return std::accumulate(res.begin(), res.end(), std::string(""));
+    return ss.str();
 }
 
 std::string ELFBinary::ShowDtRela() {
