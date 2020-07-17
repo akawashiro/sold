@@ -745,10 +745,9 @@ private:
 
     static bool ShouldLink(const std::string& soname) {
         // TODO(hamaji): Make this customizable.
-        std::vector<std::string> nolink_prefixes = {
-            "libc.so",     "libm.so",      "libdl.so",   "librt.so", "libpthread.so",
-            "libgcc_s.so", "libstdc++.so", "libgomp.so", "ld-linux", "libcuda.so",
-        };
+        // TODO(akawashiro): Add libcmp.so for test verneed function. I will remove it after implementing --exclude option.
+        std::vector<std::string> nolink_prefixes = {"libc.so",      "libm.so",    "libdl.so", "librt.so",   "libpthread.so", "libgcc_s.so",
+                                                    "libstdc++.so", "libgomp.so", "ld-linux", "libcuda.so", "libmax.so"};
         for (const std::string& prefix : nolink_prefixes) {
             if (HasPrefix(soname, prefix)) {
                 return false;
