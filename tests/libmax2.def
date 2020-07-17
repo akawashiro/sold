@@ -1,0 +1,10 @@
+LIBMAX_1.0{
+    global: 
+            max*;
+    local: *;
+};
+LIBMAX_2.0{
+    global: 
+            max*;
+    local: *;
+} LIBMAX_1.0;
