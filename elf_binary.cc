@@ -110,6 +110,7 @@ void ELFBinary::ReadDynSymtab() {
     if (gnu_hash_) {
         indices = CollectSymbolsFromGnuHash(gnu_hash_);
     } else {
+        LOGF("hash_\n");
         CHECK(hash_);
         indices = CollectSymbolsFromElfHash(hash_);
     }
