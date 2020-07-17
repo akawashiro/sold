@@ -778,6 +778,7 @@ private:
     SymtabBuilder syms_;
     std::vector<Elf_Rel> rels_;
     StrtabBuilder strtab_;
+    VersionBuilder version_;
     Elf_Ehdr ehdr_;
     std::vector<Load> loads_;
     std::vector<Elf_Dyn> dynamic_;
