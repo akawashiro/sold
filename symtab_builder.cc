@@ -54,7 +54,7 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& filename
             }
         } else {
             LOGF("Symbol %s not found\n", name.c_str());
-            Syminfo s{name, filename, version_name, 0, NULL};
+            Syminfo s{name, filename, version_name, 2, NULL};
             sym.index = AddSym(s);
             CHECK(syms_.emplace(std::make_tuple(name, filename, version_name), sym).second);
         }
