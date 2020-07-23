@@ -17,3 +17,7 @@ jobs:
       run: cmake --build build
     - name: TestVersion
       run: cd tests && ./test-versions.sh
+    - name: version-gcc
+      run: cd tests/version-gcc && ./test.sh
+    - name: version-g++
+      run: cd tests/version-g++ && ./test.sh

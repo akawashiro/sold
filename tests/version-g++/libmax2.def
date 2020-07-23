@@ -1,0 +1,14 @@
+LIBMAX_1.0{
+    global: 
+        extern "C++" {
+            max*;
+        };
+    local: *;
+};
+LIBMAX_2.0{
+    global: 
+        extern "C++" {
+            max*;
+        };
+    local: *;
+} LIBMAX_1.0;

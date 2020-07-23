@@ -1,0 +1,5 @@
+libmax.so*
+*.o
+*.out
+vertest1
+vertest2

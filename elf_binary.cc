@@ -65,6 +65,7 @@ void ELFBinary::ReadDynSymtab() {
             int n = buckets[i];
             if (!n) continue;
             const uint32_t* hv = &hashvals[n - gnu_hash_->symndx];
+            if (!*hv) continue;
             for (Elf_Sym* sym = &symtab_[n];; ++sym) {
                 uint32_t h2 = *hv++;
                 const std::string name(strtab_ + sym->st_name);
@@ -90,7 +91,8 @@ void ELFBinary::ReadDynSymtab() {
                 syms_.push_back(Syminfo{name, p.first, p.second, v, sym});
             }
         }
-    } else {
+    }
+    if (hash_) {
         LOGF("hash_\n");
         CHECK(hash_);
         const uint32_t* buckets = hash_->buckets();
