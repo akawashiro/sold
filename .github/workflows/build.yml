@@ -15,3 +15,15 @@ jobs:
       run: mkdir build && cd build && cmake -GNinja ..
     - name: Build
       run: cmake --build build
+    - name: hello-gcc
+      run: cd tests/hello-gcc && ./test.sh
+    - name: hello-g++
+      run: cd tests/hello-g++ && ./test.sh
+    - name: just-return-gcc 
+      run: cd tests/just-return-gcc && ./test.sh
+    - name: just-return-g++
+      run: cd tests/just-return-g++ && ./test.sh
+    - name: simple-lib-gcc
+      run: cd tests/simple-lib-gcc && ./test.sh
+    - name: simple-lib-g++
+      run: cd tests/simple-lib-g++ && ./test.sh
