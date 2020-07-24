@@ -11,6 +11,20 @@
 #include <set>
 #include <sstream>
 
+namespace {
+bool is_special_ver_ndx(Elf64_Versym v) {
+    return (v == VER_NDX_LOCAL || v == VER_NDX_GLOBAL);
+}
+
+std::string special_ver_ndx_to_str(Elf64_Versym v) {
+    if (v == VER_NDX_LOCAL) {
+        return std::string("VER_NDX_LOCAL");
+    } else if (v == VER_NDX_GLOBAL) {
+        return std::string("VER_NDX_GLOBAL");
+    }
+}
+}  // namespace
+
 ELFBinary::ELFBinary(const std::string& filename, int fd, char* head, size_t size)
     : filename_(filename), fd_(fd), head_(head), size_(size) {
     ehdr_ = reinterpret_cast<Elf_Ehdr*>(head);
@@ -159,9 +173,8 @@ std::pair<std::string, std::string> ELFBinary::GetVerneed(int index) {
     }
 
     LOGF("GetVerneed versym_[index] = %d\n", versym_[index]);
-    if (versym_[index] == VER_NDX_LOCAL) {
-        return std::make_pair("", "");
-    } else if (versym_[index] == VER_NDX_GLOBAL) {
+
+    if (is_special_ver_ndx(versym_[index])) {
         return std::make_pair("", "");
     } else {
         CHECK(verneed_);
@@ -190,10 +203,8 @@ void ELFBinary::PrintVersyms() {
     if (!versym_ || !nsyms_) return;
 
     for (int i = 0; i < nsyms_ + 1; i++) {
-        if (versym_[i] == VER_NDX_LOCAL) {
-            LOGF("VERSYM: VER_NDX_LOCAL\n");
-        } else if (versym_[i] == VER_NDX_GLOBAL) {
-            LOGF("VERSYM: VER_NDX_GLOBAL\n");
+        if (is_special_ver_ndx(versym_[i])) {
+            LOGF("VERSYM: %s\n", special_ver_ndx_to_str(versym_[i]).c_str());
         } else {
             LOGF("VERSYM: %d\n", versym_[i]);
         }
@@ -218,10 +229,8 @@ void ELFBinary::PrintVerneeds() {
 
 std::string ELFBinary::ShowVersym(int index) {
     CHECK(0 < index && index <= nsyms_ + 1);
-    if (versym_[index] == VER_NDX_LOCAL) {
-        return std::string("VER_NDX_LOCAL");
-    } else if (versym_[index] == VER_NDX_GLOBAL) {
-        return std::string("VER_NDX_GLOBAL");
+    if (is_special_ver_ndx(versym_[index])) {
+        return special_ver_ndx_to_str(versym_[index]);
     } else {
         CHECK(verneed_);
         Elf_Verneed* vn = verneed_;
@@ -371,10 +380,8 @@ std::string ELFBinary::ShowDynSymtab() {
 
         if (it.ver == -1) {
             ss << "NO_VERSION_INFO";
-        } else if (it.ver == VER_NDX_LOCAL) {
-            ss << "VER_NDX_LOCAL";
-        } else if (it.ver == VER_NDX_GLOBAL) {
-            ss << "VER_NDX_GLOBAL";
+        } else if (is_special_ver_ndx(it.ver)) {
+            ss << special_ver_ndx_to_str(it.ver);
         } else {
             ss << it.filename << " " << it.version_name;
         }
