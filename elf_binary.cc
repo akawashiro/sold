@@ -118,8 +118,7 @@ const Elf_Phdr& ELFBinary::GetPhdr(uint64_t type) {
 }
 
 void ELFBinary::PrintVersyms() {
-    CHECK(versym_);
-    CHECK(nsyms_);
+    if (!versym_ || !nsyms_) return;
 
     for (int i = 0; i < nsyms_ + 1; i++) {
         if (versym_[i] == VER_NDX_LOCAL) {
@@ -133,7 +132,8 @@ void ELFBinary::PrintVersyms() {
 }
 
 void ELFBinary::PrintVerneeds() {
-    CHECK(verneed_);
+    if (!verneed_) return;
+
     Elf_Verneed* vn = verneed_;
     for (int i = 0; i < verneednum_; ++i) {
         LOGF("VERNEED: ver=%d cnt=%d file=%s aux=%d next=%d\n", vn->vn_version, vn->vn_cnt, strtab_ + vn->vn_file, vn->vn_aux, vn->vn_next);
