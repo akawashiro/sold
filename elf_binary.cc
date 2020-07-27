@@ -62,10 +62,12 @@ void ELFBinary::ReadDynSymtab() {
         const uint32_t* hashvals = gnu_hash_->hashvals();
         for (int i = 0; i < gnu_hash_->nbuckets; ++i) {
             int n = buckets[i];
+            LOGF("n = %d\n", n);
             if (!n) continue;
             const uint32_t* hv = &hashvals[n - gnu_hash_->symndx];
             for (Elf_Sym* sym = &symtab_[n];; ++sym) {
                 uint32_t h2 = *hv++;
+                LOGF("sym->st_name = %d\n", sym->st_name);
                 const std::string name(strtab_ + sym->st_name);
                 // TODO(hamaji): Handle version symbols.
 
