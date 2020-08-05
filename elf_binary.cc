@@ -60,6 +60,7 @@ void ELFBinary::ReadDynSymtab() {
     if (gnu_hash_) {
         const uint32_t* buckets = gnu_hash_->buckets();
         const uint32_t* hashvals = gnu_hash_->hashvals();
+        LOGF("gnu_hash_->nbuckets = %d\n", gnu_hash_->nbuckets);
         for (int i = 0; i < gnu_hash_->nbuckets; ++i) {
             int n = buckets[i];
             LOGF("n = %d\n", n);
@@ -101,6 +102,20 @@ void ELFBinary::ReadDynSymtab() {
             CHECK(syms_.emplace(std::make_pair(name, sym - symtab_), sym).second);
         }
     }
+
+    // Pull symbols from rela table forcibly
+    CHECK(rel_);
+    for (int offset = 0; offset < num_rels_; offset++) {
+        const Elf_Rel* rp = rel_ + offset;
+        Elf_Sym* sym = &symtab_[ELF_R_SYM(rp->r_info)];
+        const std::string name(strtab_ + sym->st_name);
+        LOGF("%s in rela\n", name.c_str());
+        if (name != "" && syms_.find(std::make_pair(name, sym - symtab_)) == syms_.end()) {
+            CHECK(rela_syms_.emplace(name, sym).second);
+            nsyms_++;
+        }
+    }
+
     LOGF("nsyms_ = %d\n", nsyms_);
 }
 
@@ -297,7 +312,7 @@ Elf_Addr ELFBinary::OffsetFromAddr(Elf_Addr addr) {
 
 std::string ELFBinary::ShowDynSymtab() {
     LOGF("ShowDynSymtab\n");
-    std::vector<std::string> res(syms_.size() + 1);
+    std::map<int, std::string> res;
     for (auto it : syms_) {
         std::stringstream ss;
         ss << it.first.second << ": " << it.first.first << " ";
@@ -307,10 +322,15 @@ std::string ELFBinary::ShowDynSymtab() {
         } else {
             ss << "NO_VERSION_INFO\n";
         }
+        LOGF("ss.str().c_str() = %s, syms_.size() + 1 = %d, it.first.second = %d\n", ss.str().c_str(), syms_.size() + 1, it.first.second);
         res[it.first.second] = ss.str();
     }
 
-    return std::accumulate(res.begin(), res.end(), std::string(""));
+    std::string str;
+    for (auto it : res) {
+        str += it.second;
+    }
+    return str;
 }
 
 std::string ELFBinary::ShowDtRela() {
@@ -323,7 +343,7 @@ std::string ELFBinary::ShowDtRela() {
         const Elf_Rel* rp = rel_ + offset;
         const Elf_Sym* sym = &symtab_[ELF_R_SYM(rp->r_info)];
         ss << "r_offset = " << rp->r_offset << ", r_info = " << rp->r_info << ", r_addend = " << rp->r_addend
-           << ", symbol name = " << std::string(strtab_ + sym->st_name) << std::endl;
+           << ", symbol name = " << std::string(strtab_ + sym->st_name) << ", st_value = " << sym->st_value << std::endl;
     }
 
     return ss.str();

@@ -45,6 +45,8 @@ public:
 
     const std::map<std::pair<std::string, int>, Elf_Sym*>& GetSymbolMap() const { return syms_; }
 
+    const std::map<std::string, Elf_Sym*>& GetRelaSymbolMap() const { return rela_syms_; }
+
     Range GetRange() const;
 
     bool InTLS(uintptr_t offset) const;
@@ -111,6 +113,8 @@ private:
     std::string name_;
     // Map from (symbol, offset in .dynsymtab) to Elf_Sym*
     std::map<std::pair<std::string, int>, Elf_Sym*> syms_;
+    // Symbols in rela but not in .dynsymtab
+    std::map<std::string, Elf_Sym*> rela_syms_;
 
     int nsyms_{0};
 

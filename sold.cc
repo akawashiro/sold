@@ -321,6 +321,7 @@ private:
         CHECK(ftell(fp) == GnuHashOffset());
         const Elf_GnuHash& gnu_hash = syms_.gnu_hash();
         Write(fp, gnu_hash.nbuckets);
+        LOGF("gnu_hash.symndx = %d\n", gnu_hash.symndx);
         Write(fp, gnu_hash.symndx);
         Write(fp, gnu_hash.maskwords);
         Write(fp, gnu_hash.shift2);
@@ -341,7 +342,9 @@ private:
 
     void EmitSymtab(FILE* fp) {
         CHECK(ftell(fp) == SymtabOffset());
+        LOGF("syms_.Get().size() = %d\n", syms_.Get().size());
         for (const Elf_Sym& sym : syms_.Get()) {
+            LOGF("sym.st_name = %d\n", sym.st_name);
             Write(fp, sym);
         }
     }
@@ -527,6 +530,15 @@ private:
                 syms_.AddPublicSymbol(p.first.first, *sym);
             }
         }
+
+        // Push symbols from rela forcibly
+        for (const auto& p : main_binary_->GetRelaSymbolMap()) {
+            const Elf_Sym* sym = p.second;
+            LOGF("Symbol from rela: name = %s, ELF_ST_BIND(sym->st_info) == STB_GLOBAL = %d\n", p.first.c_str(),
+                 ELF_ST_BIND(sym->st_info) == STB_GLOBAL);
+            syms_.AddPublicSymbol(p.first, *sym);
+        }
+
         for (ELFBinary* bin : link_binaries_) {
             if (bin == main_binary_.get()) continue;
             for (const auto& p : bin->GetSymbolMap()) {
