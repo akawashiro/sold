@@ -11,20 +11,6 @@
 #include <set>
 #include <sstream>
 
-namespace {
-bool is_special_ver_ndx(Elf64_Versym v) {
-    return (v == VER_NDX_LOCAL || v == VER_NDX_GLOBAL);
-}
-
-std::string special_ver_ndx_to_str(Elf64_Versym v) {
-    if (v == VER_NDX_LOCAL) {
-        return std::string("VER_NDX_LOCAL");
-    } else if (v == VER_NDX_GLOBAL) {
-        return std::string("VER_NDX_GLOBAL");
-    }
-}
-}  // namespace
-
 ELFBinary::ELFBinary(const std::string& filename, int fd, char* head, size_t size)
     : filename_(filename), fd_(fd), head_(head), size_(size) {
     ehdr_ = reinterpret_cast<Elf_Ehdr*>(head);
@@ -70,6 +56,18 @@ bool ELFBinary::InTLS(uintptr_t offset) const {
 }
 
 namespace {
+
+bool is_special_ver_ndx(Elf64_Versym v) {
+    return (v == VER_NDX_LOCAL || v == VER_NDX_GLOBAL);
+}
+
+std::string special_ver_ndx_to_str(Elf64_Versym v) {
+    if (v == VER_NDX_LOCAL) {
+        return std::string("VER_NDX_LOCAL");
+    } else if (v == VER_NDX_GLOBAL) {
+        return std::string("VER_NDX_GLOBAL");
+    }
+}
 
 std::set<int> CollectSymbolsFromReloc(const Elf_Rel* rels, size_t num) {
     std::set<int> indices;
