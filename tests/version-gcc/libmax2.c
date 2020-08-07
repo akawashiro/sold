@@ -7,7 +7,9 @@ int max__1(int a, int b){
 
 int max__2(int a, int b, int c){
     printf("max__2 @ libmax2\n");
-    return (a < b ? a : b);
+    int r = a > b ? a : b;
+    r = r > c ? r : c;
+    return r;
 }
 
 __asm__(".symver max__1,max@LIBMAX_1.0");
