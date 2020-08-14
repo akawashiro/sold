@@ -104,8 +104,8 @@ private:
         EmitPhdrs(fp);
         EmitGnuHash(fp);
         EmitSymtab(fp);
-        version_.EmitVersym(fp);
-        version_.EmitVerneed(fp, strtab_);
+        EmitVersym(fp);
+        EmitVerneed(fp);
         EmitRel(fp);
         EmitArrays(fp);
         EmitStrtab(fp);
@@ -149,6 +149,8 @@ private:
     uintptr_t DynamicOffset() const { return StrtabOffset() + strtab_.size(); }
 
     uintptr_t CodeOffset() const { return AlignNext(DynamicOffset() + sizeof(Elf_Dyn) * dynamic_.size()); }
+
+    uintptr_t TLSOffset() const { return tls_file_offset_; }
 
     void BuildEhdr() {
         ehdr_ = *main_binary_->ehdr();
@@ -361,6 +363,16 @@ private:
         }
     }
 
+    void EmitVersym(FILE* fp) {
+        CHECK(ftell(fp) == VersymOffset());
+        version_.EmitVersym(fp);
+    }
+
+    void EmitVerneed(FILE* fp) {
+        CHECK(ftell(fp) == VerneedOffset());
+        version_.EmitVerneed(fp, strtab_);
+    }
+
     void EmitStrtab(FILE* fp) {
         CHECK(ftell(fp) == StrtabOffset());
         WriteBuf(fp, strtab_.data(), strtab_.size());
@@ -392,6 +404,7 @@ private:
     }
 
     void EmitCode(FILE* fp) {
+        CHECK(ftell(fp) == CodeOffset());
         for (const Load& load : loads_) {
             ELFBinary* bin = load.bin;
             Elf_Phdr* phdr = load.orig;
@@ -403,6 +416,7 @@ private:
 
     void EmitTLS(FILE* fp) {
         EmitPad(fp, tls_file_offset_);
+        CHECK(ftell(fp) == TLSOffset());
         for (TLS::Data data : tls_.data) {
             WriteBuf(fp, data.start, data.size);
         }
