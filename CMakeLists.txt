@@ -15,6 +15,7 @@ add_library(
   ldsoconf.cc
   strtab_builder.cc
   symtab_builder.cc
+  shdr_builder.cc
   utils.cc
   version_builder.cc
   )

@@ -28,6 +28,7 @@
 #include "elf_binary.h"
 #include "hash.h"
 #include "ldsoconf.h"
+#include "shdr_builder.h"
 #include "strtab_builder.h"
 #include "symtab_builder.h"
 #include "utils.h"
@@ -110,6 +111,7 @@ private:
         EmitArrays(fp);
         EmitStrtab(fp);
         EmitDynamic(fp);
+        EmitShstrtab(fp);
         EmitAlign(fp);
 
         EmitCode(fp);
@@ -148,7 +150,9 @@ private:
 
     uintptr_t DynamicOffset() const { return StrtabOffset() + strtab_.size(); }
 
-    uintptr_t CodeOffset() const { return AlignNext(DynamicOffset() + sizeof(Elf_Dyn) * dynamic_.size()); }
+    uintptr_t ShstrtabOffset() const { return DynamicOffset() + sizeof(Elf_Dyn) * dynamic_.size(); }
+
+    uintptr_t CodeOffset() const { return AlignNext(ShstrtabOffset() + shdr_.SizeOfShstrtab()); }
 
     uintptr_t TLSOffset() const { return tls_file_offset_; }
 
@@ -394,6 +398,11 @@ private:
         for (uintptr_t ptr : fini_array_) {
             Write(fp, ptr);
         }
+    }
+
+    void EmitShstrtab(FILE* fp) {
+        CHECK(ftell(fp) == ShstrtabOffset());
+        shdr_.EmitShstrtab(fp);
     }
 
     void EmitDynamic(FILE* fp) {
@@ -801,6 +810,7 @@ private:
     std::vector<Elf_Rel> rels_;
     StrtabBuilder strtab_;
     VersionBuilder version_;
+    ShdrBuilder shdr_;
     Elf_Ehdr ehdr_;
     std::vector<Load> loads_;
     std::vector<Elf_Dyn> dynamic_;
