@@ -58,7 +58,7 @@ public:
         syms_.Build(strtab_, version_);
         syms_.MergePublicSymbols(strtab_, version_);
 
-        BuildEhdr();
+        // BuildEhdr();
         if (is_executable_) {
             BuildInterp();
         }
@@ -67,6 +67,13 @@ public:
 
         strtab_.Freeze();
         BuildLoads();
+
+        shdr_.RegisterShdr(ShstrtabOffset(), shdr_.ShstrtabSize(), ShdrBuilder::ShdrType::Shstrtab);
+        shdr_.RegisterShdr(DynamicOffset(), DynamicSize(), ShdrBuilder::ShdrType::Dynamic);
+        shdr_.RegisterShdr(StrtabOffset(), StrtabSize(), ShdrBuilder::ShdrType::Dynstr);
+
+        // We must call BuildEhdr at the last because of e_shoff
+        BuildEhdr();
 
         Emit(out_filename);
         CHECK(chmod(out_filename.c_str(), 0755) == 0);
@@ -116,6 +123,9 @@ private:
 
         EmitCode(fp);
         EmitTLS(fp);
+
+        EmitShdr(fp);
+
         fclose(fp);
     }
 
@@ -132,7 +142,7 @@ private:
         return num_phdrs;
     }
 
-    uintptr_t GnuHashOffset() const { return sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * ehdr_.e_phnum; }
+    uintptr_t GnuHashOffset() const { return sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * CountPhdrs(); }
 
     uintptr_t SymtabOffset() const { return GnuHashOffset() + syms_.GnuHashSize(); }
 
@@ -147,21 +157,34 @@ private:
     uintptr_t FiniArrayOffset() const { return InitArrayOffset() + sizeof(uintptr_t) * init_array_.size(); }
 
     uintptr_t StrtabOffset() const { return FiniArrayOffset() + sizeof(uintptr_t) * fini_array_.size(); }
+    uintptr_t StrtabSize() const { return strtab_.size(); }
 
-    uintptr_t DynamicOffset() const { return StrtabOffset() + strtab_.size(); }
+    uintptr_t DynamicOffset() const { return StrtabOffset() + StrtabSize(); }
+    uintptr_t DynamicSize() const { return sizeof(Elf_Dyn) * dynamic_.size(); }
 
-    uintptr_t ShstrtabOffset() const { return DynamicOffset() + sizeof(Elf_Dyn) * dynamic_.size(); }
+    uintptr_t ShstrtabOffset() const { return DynamicOffset() + DynamicSize(); }
 
-    uintptr_t CodeOffset() const { return AlignNext(ShstrtabOffset() + shdr_.SizeOfShstrtab()); }
+    uintptr_t CodeOffset() const { return AlignNext(ShstrtabOffset() + shdr_.ShstrtabSize()); }
 
     uintptr_t TLSOffset() const { return tls_file_offset_; }
+    uintptr_t TLSSize() const {
+        uintptr_t s = 0;
+        for (const TLS::Data& data : tls_.data) {
+            s += data.size;
+        }
+        return s;
+    }
 
+    uintptr_t ShdrOffset() const { return TLSOffset() + TLSSize(); }
+
+    // You must call this function after building all stuffs
+    // because ShdrOffset() is not fixed before it.
     void BuildEhdr() {
         ehdr_ = *main_binary_->ehdr();
         ehdr_.e_entry += offsets_[main_binary_.get()];
-        ehdr_.e_shoff = 0;
-        ehdr_.e_shnum = 0;
-        ehdr_.e_shstrndx = 0;
+        ehdr_.e_shoff = ShdrOffset();
+        ehdr_.e_shnum = shdr_.CountShdrs();
+        ehdr_.e_shstrndx = shdr_.Shstrndx();
         ehdr_.e_phnum = CountPhdrs();
     }
 
@@ -429,6 +452,11 @@ private:
         for (TLS::Data data : tls_.data) {
             WriteBuf(fp, data.start, data.size);
         }
+    }
+
+    void EmitShdr(FILE* fp) {
+        CHECK(ftell(fp) == ShdrOffset());
+        shdr_.EmitShdrs(fp);
     }
 
     void DecideOffsets() {

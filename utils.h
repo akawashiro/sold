@@ -12,6 +12,9 @@
 #define Elf_Dyn Elf64_Dyn
 #define Elf_Addr Elf64_Addr
 #define Elf_Sym Elf64_Sym
+#define Elf_Shdr Elf64_Shdr
+#define Elf_Off Elf64_Off
+#define Elf_Half Elf64_Half
 #define Elf_Versym Elf64_Versym
 #define Elf_Word Elf64_Xword
 #define Elf_Vernaux Elf64_Vernaux
