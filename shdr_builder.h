@@ -13,7 +13,7 @@ public:
     Elf_Half CountShdrs() const { return shdrs.size(); }
     void RegisterShdr(Elf_Off offset, uint64_t size, ShdrType type);
     // The index of shstrndx is fixed 0.
-    Elf_Half Shstrndx() const { return 0; }
+    Elf_Half Shstrndx() const { return shdrs.size() - 1; }
 
 private:
     const std::map<ShdrType, std::string> type_to_str = {
@@ -21,5 +21,5 @@ private:
         {RelaDyn, ".rela.dyn"}, {Init, ".init"},     {Strtab, ".strtab"},          {Shstrtab, ".shstrtab"},         {Dynamic, ".dynamic"},
         {Text, ".text"},        {TLS, ".tls"}};
     std::vector<Elf_Shdr> shdrs;
-    uint32_t ShstrtabIndex(ShdrType type) const;
+    uint32_t GetShName(ShdrType type) const;
 };
