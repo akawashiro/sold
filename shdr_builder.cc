@@ -62,30 +62,53 @@ void ShdrBuilder::EmitShdrs(FILE* fp) {
     CHECK(fwrite(&shstrtab, sizeof(shstrtab), 1, fp) == 1);
 }
 
-void ShdrBuilder::RegisterShdr(Elf_Off offset, uint64_t size, ShdrType type) {
+void ShdrBuilder::RegisterShdr(Elf_Off offset, uint64_t size, ShdrType type, uint64_t entsize) {
     Elf_Shdr shdr = {0};
     shdr.sh_name = GetShName(type);
     shdr.sh_offset = offset;
+    shdr.sh_addr = offset;
     shdr.sh_size = size;
+    shdr.sh_entsize = entsize;
     switch (type) {
-        case Shstrtab: {
+        case GnuHash:
+            shdr.sh_type = SHT_GNU_HASH;
+            break;
+        case Dynsym:
+            shdr.sh_type = SHT_DYNSYM;
+            break;
+        case GnuVersion:
+            shdr.sh_type = SHT_GNU_versym;
+            break;
+        case GnuVersionR:
+            shdr.sh_type = SHT_GNU_verneed;
+            break;
+        case Dynstr:
+            shdr.sh_type = SHT_STRTAB;
+            shdr.sh_flags = 0;
+            break;
+        case RelaDyn:
+            shdr.sh_type = SHT_RELA;
+            break;
+        case Init:
+            shdr.sh_type = SHT_INIT_ARRAY;
+            break;
+        case Fini:
+            shdr.sh_type = SHT_FINI_ARRAY;
+            break;
+        case Strtab:
             shdr.sh_type = SHT_STRTAB;
             shdr.sh_flags = 0;
             shdr.sh_addr = 0;
             break;
-        }
-        case Dynamic: {
+        case Shstrtab:
+            shdr.sh_type = SHT_STRTAB;
+            shdr.sh_flags = 0;
+            shdr.sh_addr = 0;
+            break;
+        case Dynamic:
             shdr.sh_type = SHT_DYNAMIC;
             shdr.sh_flags = 0;
-            shdr.sh_addr = 0;
             break;
-        }
-        case Dynstr: {
-            shdr.sh_type = SHT_STRTAB;
-            shdr.sh_flags = 0;
-            shdr.sh_addr = 0;
-            break;
-        }
         default:
             LOGF("Not implemented\n");
             exit(1);

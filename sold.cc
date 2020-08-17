@@ -68,9 +68,18 @@ public:
         strtab_.Freeze();
         BuildLoads();
 
-        shdr_.RegisterShdr(ShstrtabOffset(), shdr_.ShstrtabSize(), ShdrBuilder::ShdrType::Shstrtab);
-        shdr_.RegisterShdr(DynamicOffset(), DynamicSize(), ShdrBuilder::ShdrType::Dynamic);
+        shdr_.RegisterShdr(GnuHashOffset(), GnuHashSize(), ShdrBuilder::ShdrType::GnuHash);
+        shdr_.RegisterShdr(SymtabOffset(), SymtabSize(), ShdrBuilder::ShdrType::Dynsym, sizeof(Elf_Sym));
+        shdr_.RegisterShdr(VersymOffset(), VersymSize(), ShdrBuilder::ShdrType::GnuVersion, sizeof(Elf_Versym));
+        shdr_.RegisterShdr(VerneedOffset(), VerneedSize(), ShdrBuilder::ShdrType::GnuVersionR);
+        shdr_.RegisterShdr(RelOffset(), RelSize(), ShdrBuilder::ShdrType::RelaDyn, sizeof(Elf_Rel));
+        shdr_.RegisterShdr(InitArrayOffset(), InitArraySize(), ShdrBuilder::ShdrType::Init);
+        shdr_.RegisterShdr(FiniArrayOffset(), FiniArraySize(), ShdrBuilder::ShdrType::Fini);
         shdr_.RegisterShdr(StrtabOffset(), StrtabSize(), ShdrBuilder::ShdrType::Dynstr);
+        shdr_.RegisterShdr(DynamicOffset(), DynamicSize(), ShdrBuilder::ShdrType::Dynamic, sizeof(Elf_Dyn));
+        shdr_.RegisterShdr(ShstrtabOffset(), ShstrtabSize(), ShdrBuilder::ShdrType::Shstrtab);
+        // TODO(akawashiro) .text and .tls
+        shdr_.Freeze();
 
         // We must call BuildEhdr at the last because of e_shoff
         BuildEhdr();
@@ -143,28 +152,45 @@ private:
     }
 
     uintptr_t GnuHashOffset() const { return sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * CountPhdrs(); }
+    uintptr_t GnuHashSize() const { return syms_.GnuHashSize(); }
 
-    uintptr_t SymtabOffset() const { return GnuHashOffset() + syms_.GnuHashSize(); }
+    uintptr_t SymtabOffset() const { return GnuHashOffset() + GnuHashSize(); }
+    uintptr_t SymtabSize() const { return syms_.size() * sizeof(Elf_Sym); }
 
-    uintptr_t VersymOffset() const { return SymtabOffset() + syms_.size() * sizeof(Elf_Sym); }
+    uintptr_t VersymOffset() const { return SymtabOffset() + SymtabSize(); }
+    uintptr_t VersymSize() const { return version_.SizeVersym(); }
 
-    uintptr_t VerneedOffset() const { return VersymOffset() + version_.SizeVersym(); }
+    uintptr_t VerneedOffset() const { return VersymOffset() + VersymSize(); }
+    uintptr_t VerneedSize() const { return version_.SizeVerneed(); }
 
-    uintptr_t RelOffset() const { return VerneedOffset() + version_.SizeVerneed(); }
+    uintptr_t RelOffset() const { return VerneedOffset() + VerneedSize(); }
+    uintptr_t RelSize() const { return rels_.size() * sizeof(Elf_Rel); }
 
-    uintptr_t InitArrayOffset() const { return AlignNext(RelOffset() + rels_.size() * sizeof(Elf_Rel), 7); }
+    uintptr_t InitArrayOffset() const { return AlignNext(RelOffset() + RelSize(), 7); }
+    uintptr_t InitArraySize() const { return sizeof(uintptr_t) * init_array_.size(); }
 
-    uintptr_t FiniArrayOffset() const { return InitArrayOffset() + sizeof(uintptr_t) * init_array_.size(); }
+    uintptr_t FiniArrayOffset() const { return InitArrayOffset() + InitArraySize(); }
+    uintptr_t FiniArraySize() const { return sizeof(uintptr_t) * fini_array_.size(); }
 
-    uintptr_t StrtabOffset() const { return FiniArrayOffset() + sizeof(uintptr_t) * fini_array_.size(); }
+    uintptr_t StrtabOffset() const { return FiniArrayOffset() + FiniArraySize(); }
     uintptr_t StrtabSize() const { return strtab_.size(); }
 
     uintptr_t DynamicOffset() const { return StrtabOffset() + StrtabSize(); }
     uintptr_t DynamicSize() const { return sizeof(Elf_Dyn) * dynamic_.size(); }
 
     uintptr_t ShstrtabOffset() const { return DynamicOffset() + DynamicSize(); }
+    uintptr_t ShstrtabSize() const { return shdr_.ShstrtabSize(); }
 
-    uintptr_t CodeOffset() const { return AlignNext(ShstrtabOffset() + shdr_.ShstrtabSize()); }
+    uintptr_t CodeOffset() const { return AlignNext(ShstrtabOffset() + ShstrtabSize()); }
+    uintptr_t CodeSize() {
+        uintptr_t p = 0;
+        for (const Load& load : loads_) {
+            ELFBinary* bin = load.bin;
+            Elf_Phdr* phdr = load.orig;
+            p += (load.emit.p_offset + phdr->p_filesz);
+        }
+        return p;
+    }
 
     uintptr_t TLSOffset() const { return tls_file_offset_; }
     uintptr_t TLSSize() const {
