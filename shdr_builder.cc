@@ -95,28 +95,35 @@ void ShdrBuilder::RegisterShdr(Elf_Off offset, uint64_t size, ShdrType type, uin
     switch (type) {
         case GnuHash:
             shdr.sh_type = SHT_GNU_HASH;
+            shdr.sh_flags = SHF_ALLOC;
             break;
         case Dynsym:
             shdr.sh_type = SHT_DYNSYM;
+            shdr.sh_flags = SHF_ALLOC;
             break;
         case GnuVersion:
             shdr.sh_type = SHT_GNU_versym;
+            shdr.sh_flags = SHF_ALLOC;
             break;
         case GnuVersionR:
             shdr.sh_type = SHT_GNU_verneed;
+            shdr.sh_flags = SHF_ALLOC;
             break;
         case Dynstr:
             shdr.sh_type = SHT_STRTAB;
-            shdr.sh_flags = 0;
+            shdr.sh_flags = SHF_ALLOC;
             break;
         case RelaDyn:
             shdr.sh_type = SHT_RELA;
+            shdr.sh_flags = SHF_ALLOC;
             break;
         case Init:
             shdr.sh_type = SHT_INIT_ARRAY;
+            shdr.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
             break;
         case Fini:
             shdr.sh_type = SHT_FINI_ARRAY;
+            shdr.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
             break;
         case Strtab:
             shdr.sh_type = SHT_STRTAB;
@@ -130,7 +137,7 @@ void ShdrBuilder::RegisterShdr(Elf_Off offset, uint64_t size, ShdrType type, uin
             break;
         case Dynamic:
             shdr.sh_type = SHT_DYNAMIC;
-            shdr.sh_flags = 0;
+            shdr.sh_flags = SHF_ALLOC | SHF_WRITE;
             break;
         default:
             LOGF("Not implemented\n");
