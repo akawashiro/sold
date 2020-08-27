@@ -1,11 +1,15 @@
 #include <stdio.h>
 #include <threads.h>
 
-thread_local int i;
-thread_local int j = 3;
+// thread_local int tls_bss_i;
+static int global_x;
+thread_local int tls_data_j = 3;
 
 int main() {
-    i = 2;
-    printf("i = %d, j = %d\n", i, j);
+    // tls_bss_i = 2;
+    // printf("tls_bss_i = %d\n", tls_bss_i);
+    global_x = 2;
+    printf("global_x = %d\n", global_x);
+    printf("tls_data_j = %d\n", tls_data_j);
     return 0;
 }
