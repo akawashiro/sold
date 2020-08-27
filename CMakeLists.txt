@@ -38,6 +38,12 @@ add_executable(
   )
 target_link_libraries(print_dynsymtab sold_lib)
 
+add_executable(
+  print_tls
+  print_tls.cc
+  )
+target_link_libraries(print_tls sold_lib)
+
 add_subdirectory(tests)
 
 include(CTest)

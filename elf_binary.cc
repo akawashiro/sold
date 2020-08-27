@@ -252,6 +252,7 @@ void ELFBinary::ParsePhdrs() {
         if (phdr->p_type == PT_LOAD) {
             loads_.push_back(phdr);
         } else if (phdr->p_type == PT_TLS) {
+            LOGF("Found TLS entry\n");
             tls_ = phdr;
         }
     }
@@ -390,6 +391,21 @@ std::string ELFBinary::ShowDtRela() {
         ss << "r_offset = " << rp->r_offset << ", r_info = " << rp->r_info << ", r_addend = " << rp->r_addend
            << ", symbol name = " << std::string(strtab_ + sym->st_name) << std::endl;
     }
+
+    return ss.str();
+}
+
+std::string ELFBinary::ShowTLS() {
+    LOGF("ShowTLS\n");
+    std::stringstream ss;
+
+    ss << "p_offset = " << tls_->p_offset << std::endl;
+    ss << "p_vaddr = " << tls_->p_vaddr << std::endl;
+    ss << "p_paddr = " << tls_->p_paddr << std::endl;
+    ss << "p_filesz = " << tls_->p_filesz << std::endl;
+    ss << "p_memsz = " << tls_->p_memsz << std::endl;
+    ss << "p_flags = " << tls_->p_flags << std::endl;
+    ss << "p_align = " << tls_->p_align << std::endl;
 
     return ss.str();
 }

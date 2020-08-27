@@ -372,6 +372,7 @@ private:
             phdr.p_filesz = tls_.filesz;
             phdr.p_memsz = tls_.memsz;
             phdr.p_align = 0x1000;
+            // phdr.p_align = tls_.align;
             phdr.p_type = PT_TLS;
             phdr.p_flags = PF_R;
             phdrs.push_back(phdr);
