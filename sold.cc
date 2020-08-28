@@ -74,8 +74,8 @@ public:
         shdr_.RegisterShdr(VersymOffset(), VersymSize(), ShdrBuilder::ShdrType::GnuVersion, sizeof(Elf_Versym));
         shdr_.RegisterShdr(VerneedOffset(), VerneedSize(), ShdrBuilder::ShdrType::GnuVersionR, 0, version_.NumVerneed());
         shdr_.RegisterShdr(RelOffset(), RelSize(), ShdrBuilder::ShdrType::RelaDyn, sizeof(Elf_Rel));
-        shdr_.RegisterShdr(InitArrayOffset(), InitArraySize(), ShdrBuilder::ShdrType::Init);
-        shdr_.RegisterShdr(FiniArrayOffset(), FiniArraySize(), ShdrBuilder::ShdrType::Fini);
+        shdr_.RegisterShdr(InitArrayOffset(), InitArraySize(), ShdrBuilder::ShdrType::InitArray);
+        shdr_.RegisterShdr(FiniArrayOffset(), FiniArraySize(), ShdrBuilder::ShdrType::FiniArray);
         shdr_.RegisterShdr(StrtabOffset(), StrtabSize(), ShdrBuilder::ShdrType::Dynstr);
         shdr_.RegisterShdr(DynamicOffset(), DynamicSize(), ShdrBuilder::ShdrType::Dynamic, sizeof(Elf_Dyn));
         shdr_.RegisterShdr(ShstrtabOffset(), ShstrtabSize(), ShdrBuilder::ShdrType::Shstrtab);

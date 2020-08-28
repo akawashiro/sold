@@ -124,11 +124,11 @@ void ShdrBuilder::RegisterShdr(Elf_Off offset, uint64_t size, ShdrType type, uin
             shdr.sh_type = SHT_RELA;
             shdr.sh_flags = SHF_ALLOC;
             break;
-        case Init:
+        case InitArray:
             shdr.sh_type = SHT_INIT_ARRAY;
             shdr.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
             break;
-        case Fini:
+        case FiniArray:
             shdr.sh_type = SHT_FINI_ARRAY;
             shdr.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
             break;

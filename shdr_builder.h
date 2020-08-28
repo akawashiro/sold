@@ -6,7 +6,7 @@
 
 class ShdrBuilder {
 public:
-    enum ShdrType { GnuHash, Dynsym, GnuVersion, GnuVersionR, Dynstr, RelaDyn, Init, Fini, Strtab, Shstrtab, Dynamic, Text, TLS };
+    enum ShdrType { GnuHash, Dynsym, GnuVersion, GnuVersionR, Dynstr, RelaDyn, InitArray, FiniArray, Strtab, Shstrtab, Dynamic, Text, TLS };
     void EmitShstrtab(FILE* fp);
     void EmitShdrs(FILE* fp);
     uintptr_t ShstrtabSize() const;
@@ -18,19 +18,11 @@ public:
     void Freeze();
 
 private:
-    const std::map<ShdrType, std::string> type_to_str = {{GnuHash, ".gnu.hash"},
-                                                         {Dynsym, ".dynsym"},
-                                                         {GnuVersion, ".gnu.version"},
-                                                         {GnuVersionR, ".gnu.version_r"},
-                                                         {Dynstr, ".dynstr"},
-                                                         {RelaDyn, ".rela.dyn"},
-                                                         {Init, ".init"},
-                                                         {Fini, ".fini"},
-                                                         {Strtab, ".strtab"},
-                                                         {Shstrtab, ".shstrtab"},
-                                                         {Dynamic, ".dynamic"},
-                                                         {Text, ".text"},
-                                                         {TLS, ".tls"}};
+    const std::map<ShdrType, std::string> type_to_str = {
+        {GnuHash, ".gnu.hash"}, {Dynsym, ".dynsym"},     {GnuVersion, ".gnu.version"}, {GnuVersionR, ".gnu.version_r"},
+        {Dynstr, ".dynstr"},    {RelaDyn, ".rela.dyn"},  {InitArray, ".init_array"},   {FiniArray, ".fini_array"},
+        {Strtab, ".strtab"},    {Shstrtab, ".shstrtab"}, {Dynamic, ".dynamic"},        {Text, ".text"},
+        {TLS, ".tls"}};
 
     // The first section header must be NULL.
     std::vector<Elf_Shdr> shdrs = {Elf_Shdr{0}};
