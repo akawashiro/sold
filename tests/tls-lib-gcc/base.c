@@ -1,4 +1,3 @@
 #include "base.h"
 
-thread_local int i;
-thread_local int j = 3;
+thread_local int thread_local_i = 3;

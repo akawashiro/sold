@@ -1,4 +1,3 @@
 #include <threads.h>
 
-extern thread_local int i;
-extern thread_local int j;
+extern thread_local int thread_local_i;
