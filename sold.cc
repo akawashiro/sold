@@ -288,9 +288,11 @@ private:
             MakeDyn(DT_NEEDED, AddStr(needed));
         }
         if (!main_binary_->rpath().empty()) {
+            LOGF("DT_RPATH = %s\n", main_binary_->rpath().c_str());
             MakeDyn(DT_RPATH, AddStr(main_binary_->rpath()));
         }
         if (main_binary_->runpath().empty()) {
+            LOGF("DT_RUNPATH = %s\n", main_binary_->runpath().c_str());
             MakeDyn(DT_RUNPATH, AddStr(main_binary_->runpath()));
         }
 
@@ -370,7 +372,8 @@ private:
             phdr.p_vaddr = tls_offset_;
             phdr.p_paddr = tls_offset_;
             phdr.p_filesz = tls_.filesz;
-            phdr.p_memsz = tls_.memsz;
+            // phdr.p_memsz = tls_.memsz;
+            phdr.p_memsz = 0x10;
             phdr.p_align = 0x1000;
             // phdr.p_align = tls_.align;
             phdr.p_type = PT_TLS;
@@ -479,6 +482,7 @@ private:
         CHECK(ftell(fp) == TLSOffset());
         for (TLS::Data data : tls_.data) {
             WriteBuf(fp, data.start, data.size);
+            LOGF("data.size = %d\n", data.size);
         }
     }
 
