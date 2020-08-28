@@ -1,7 +1,4 @@
-#include <threads.h>
-
-thread_local int i;
-__thread int j = 3;
+#include "base.h"
 
 int return_tls_i() {
     return i;
