@@ -372,8 +372,8 @@ private:
             phdr.p_vaddr = tls_offset_;
             phdr.p_paddr = tls_offset_;
             phdr.p_filesz = tls_.filesz;
-            // phdr.p_memsz = tls_.memsz;
-            phdr.p_memsz = 0x10;
+            phdr.p_memsz = tls_.memsz;
+            // phdr.p_memsz = 0x10;
             phdr.p_align = 0x1000;
             // phdr.p_align = tls_.align;
             phdr.p_type = PT_TLS;
