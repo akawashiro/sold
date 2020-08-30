@@ -598,7 +598,7 @@ private:
         for (const auto& p : bin->GetSymbolMap()) {
             const std::string& name = p.name;
             Elf_Sym* sym = p.sym;
-            if (IsTLS(*sym) && sym->st_value != 0) {
+            if (IsTLS(*sym) && sym->st_shndx != SHN_UNDEF) {
                 // if (IsTLS(*sym)) {
                 sym->st_value = RemapTLS("symbol", bin, sym->st_value);
             } else if (sym->st_value) {
@@ -630,7 +630,7 @@ private:
     void CopyPublicSymbols() {
         for (const auto& p : main_binary_->GetSymbolMap()) {
             const Elf_Sym* sym = p.sym;
-            if (ELF_ST_BIND(sym->st_info) == STB_GLOBAL && IsDefined(*sym)) {
+            if (ELF_ST_BIND(sym->st_info) == STB_GLOBAL && sym->st_value && sym->st_shndx != SHN_UNDEF) {
                 LOGF("Copy public symbol %s\n", p.name.c_str());
                 syms_.AddPublicSymbol(p);
             }
@@ -640,7 +640,7 @@ private:
             for (const auto& p : bin->GetSymbolMap()) {
                 const Elf_Sym* sym = p.sym;
                 // if (IsTLS(*sym)) {
-                if (IsTLS(*sym) && sym->st_value != 0) {
+                if (IsTLS(*sym) && sym->st_shndx != SHN_UNDEF) {
                     LOGF("Copy TLS symbol %s\n", p.name.c_str());
                     syms_.AddPublicSymbol(p);
                 }

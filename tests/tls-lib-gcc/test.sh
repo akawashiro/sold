@@ -8,7 +8,7 @@ gcc -Wl,--hash-style=gnu -shared -Wl,-soname,lib.so -o answer/lib.so lib.o base.
 
 LD_LIBRARY_PATH=original ../../build/sold original/lib.so -o sold_out/lib.so --section-headers
 
-gcc -Wl,--hash-style=gnu -o main main.c sold_out/lib.so
+LD_LIBRARY_PATH=sold_out gcc -Wl,--hash-style=gnu -o main main.c lib.so
 
 LD_LIBRARY_PATH=sold_out ./main
 
