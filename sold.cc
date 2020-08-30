@@ -482,7 +482,7 @@ private:
         CHECK(ftell(fp) == TLSOffset());
         for (TLS::Data data : tls_.data) {
             WriteBuf(fp, data.start, data.size);
-            LOGF("data.size = %d\n", data.size);
+            LOGF("data.size = %ld\n", data.size);
         }
     }
 
@@ -598,7 +598,8 @@ private:
         for (const auto& p : bin->GetSymbolMap()) {
             const std::string& name = p.name;
             Elf_Sym* sym = p.sym;
-            if (IsTLS(*sym)) {
+            if (IsTLS(*sym) && sym->st_value != 0) {
+                // if (IsTLS(*sym)) {
                 sym->st_value = RemapTLS("symbol", bin, sym->st_value);
             } else if (sym->st_value) {
                 sym->st_value += offset;
@@ -638,7 +639,8 @@ private:
             if (bin == main_binary_.get()) continue;
             for (const auto& p : bin->GetSymbolMap()) {
                 const Elf_Sym* sym = p.sym;
-                if (IsTLS(*sym)) {
+                // if (IsTLS(*sym)) {
+                if (IsTLS(*sym) && sym->st_value != 0) {
                     LOGF("Copy TLS symbol %s\n", p.name.c_str());
                     syms_.AddPublicSymbol(p);
                 }
