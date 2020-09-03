@@ -35,3 +35,5 @@ jobs:
       run: cd tests/tls-lib-gcc && ./test.sh
     - name: tls-lib-gcc-without-base
       run: cd tests/tls-lib-gcc-without-base && ./test.sh
+    - name: tls-multiple-lib-gcc
+      run: cd tests/tls-multiple-lib-gcc && ./test.sh

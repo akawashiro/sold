@@ -123,7 +123,9 @@ void SymtabBuilder::Build(StrtabBuilder& strtab, VersionBuilder& version) {
         auto found = syms_.find({s.name, s.soname, s.version});
         CHECK(found != syms_.end());
         Elf_Sym sym = found->second.sym;
+        LOGF("SymtabBuilder::Build %s sym.st_shndx = %d\n", s.name.c_str(), sym.st_shndx);
         sym.st_name = strtab.Add(s.name);
+        if (sym.st_shndx != SHN_UNDEF) sym.st_shndx = 1;
         symtab_.push_back(sym);
 
         version.Add(s.versym, s.soname, s.version, strtab);
@@ -138,7 +140,7 @@ void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& ve
     gnu_hash_.shift2 = 1;
 
     for (const auto& p : public_syms_) {
-        LOGF("SymtabBuilder::MergePublicSymbols %s\n", p.name.c_str());
+        LOGF("SymtabBuilder::MergePublicSymbols %s p.sym->st_shndx = %d\n", p.name.c_str(), (p.sym)->st_shndx);
 
         const std::string& name = p.name;
         Elf_Sym* sym = new Elf_Sym;

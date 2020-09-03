@@ -33,7 +33,7 @@
         if (!(r)) assert(r); \
     } while (0)
 
-const bool FLAGS_LOG{false};
+const bool FLAGS_LOG{true};
 extern bool QUIET_LOG;
 
 #ifdef NOLOG
@@ -42,14 +42,14 @@ extern bool QUIET_LOG;
         if (QUIET_LOG) break;                                   \
         if (0) fprintf(stderr, "%s, %d: ", __FILE__, __LINE__); \
         fprintf(stderr, __VA_ARGS__);                           \
-    } while(0)
+    } while (0)
 #else
 #define LOGF(...)                                                       \
     do {                                                                \
         if (QUIET_LOG) break;                                           \
         if (FLAGS_LOG) fprintf(stderr, "%s, %d: ", __FILE__, __LINE__); \
         fprintf(stderr, __VA_ARGS__);                                   \
-    } while(0)
+    } while (0)
 #endif
 
 std::vector<std::string> SplitString(const std::string& str, const std::string& sep);
