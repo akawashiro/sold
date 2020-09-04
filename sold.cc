@@ -829,8 +829,9 @@ private:
     }
 
     bool ShouldLink(const std::string& soname) {
-        std::vector<std::string> nolink_prefixes = {"libc.so",     "libm.so",      "libdl.so",   "librt.so", "libpthread.so",
-                                                    "libgcc_s.so", "libstdc++.so", "libgomp.so", "ld-linux", "libcuda.so"};
+        std::vector<std::string> nolink_prefixes = {
+            "libc.so",      "libm.so",    "libdl.so", "librt.so",   "libpthread.so",        "libgcc_s.so",
+            "libstdc++.so", "libgomp.so", "ld-linux", "libcuda.so", "libgomp-7c85b1e2.so.1"};
         for (const std::string& prefix : nolink_prefixes) {
             if (HasPrefix(soname, prefix)) {
                 return false;
