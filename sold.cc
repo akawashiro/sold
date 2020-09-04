@@ -285,7 +285,10 @@ private:
         }
 
         for (const std::string& needed : neededs) {
-            MakeDyn(DT_NEEDED, AddStr(needed));
+            if (needed == "libgomp.so.1")
+                MakeDyn(DT_NEEDED, AddStr("libgomp-7c85b1e2.so.1"));
+            else
+                MakeDyn(DT_NEEDED, AddStr(needed));
         }
         if (!main_binary_->rpath().empty()) {
             MakeDyn(DT_RPATH, AddStr(main_binary_->rpath()));
