@@ -69,6 +69,8 @@ public:
 
     std::string ShowVersym(int index);
 
+    std::string ShowVerneed();
+
     std::string ShowTLS();
 
     std::pair<std::string, std::string> GetVerneed(int index);

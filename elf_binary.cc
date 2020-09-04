@@ -245,6 +245,25 @@ std::string ELFBinary::ShowVersym(int index) {
     }
 }
 
+std::string ELFBinary::ShowVerneed() {
+    std::stringstream ss;
+    CHECK(verneed_);
+    Elf_Verneed* vn = verneed_;
+    for (int i = 0; i < verneednum_; ++i) {
+        ss << "VERNEED: ver=" << vn->vn_version << " cnt=" << vn->vn_cnt << " file=" << strtab_ + vn->vn_file << " aux=" << vn->vn_aux
+           << " next=" << vn->vn_next << "\n";
+        Elf_Vernaux* vna = (Elf_Vernaux*)((char*)vn + vn->vn_aux);
+        for (int j = 0; j < vn->vn_cnt; ++j) {
+            ss << " VERNAUX: hash=" << vna->vna_hash << " flags=" << vna->vna_flags << " other=" << vna->vna_other
+               << " name=" << strtab_ + vna->vna_name << " next=" << vna->vna_next << "\n";
+
+            vna = (Elf_Vernaux*)((char*)vna + vna->vna_next);
+        }
+        vn = (Elf_Verneed*)((char*)vn + vn->vn_next);
+    }
+    return ss.str();
+}
+
 void ELFBinary::ParsePhdrs() {
     for (int i = 0; i < ehdr_->e_phnum; ++i) {
         Elf_Phdr* phdr = reinterpret_cast<Elf_Phdr*>(head_ + ehdr_->e_phoff + ehdr_->e_phentsize * i);

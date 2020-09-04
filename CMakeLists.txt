@@ -44,6 +44,12 @@ add_executable(
   )
 target_link_libraries(print_tls sold_lib)
 
+add_executable(
+  print_verneed
+  print_verneed.cc
+  )
+target_link_libraries(print_verneed sold_lib)
+
 add_subdirectory(tests)
 
 include(CTest)
