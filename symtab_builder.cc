@@ -58,7 +58,7 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
             if (IsDefined(sym.sym)) {
                 LOGF("Symbol %s found\n", name.c_str());
             } else {
-                LOGF("Symbol (undef/weak) %s found\n", name.c_str());
+                LOGF("Symbol (undef/weak) %s(soname = %s, sym.sym.st_value = %d) found\n", name.c_str(), soname.c_str(), sym.sym.st_value);
                 Syminfo s{name, soname, version, newver(found->versym), NULL};
                 sym.index = AddSym(s);
                 CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
