@@ -287,12 +287,17 @@ private:
         for (const std::string& needed : neededs) {
             MakeDyn(DT_NEEDED, AddStr(needed));
         }
-        if (!main_binary_->rpath().empty()) {
-            MakeDyn(DT_RPATH, AddStr(main_binary_->rpath()));
-        }
-        if (main_binary_->runpath().empty()) {
-            MakeDyn(DT_RUNPATH, AddStr(main_binary_->runpath()));
-        }
+        // if (!main_binary_->rpath().empty()) {
+        //     LOGF("MakeDyn(DT_RPATH, AddStr(main_binary_->rpath()))\n");
+        //     MakeDyn(DT_RPATH, AddStr(main_binary_->rpath()));
+        // }
+        // if (main_binary_->runpath().empty()) {
+        //     LOGF("MakeDyn(DT_RUNPATH, AddStr(main_binary_->runpath()))\n");
+        //     MakeDyn(DT_RUNPATH, AddStr(main_binary_->runpath()));
+        // }
+        MakeDyn(DT_RUNPATH,
+                AddStr("/usr/local/cuda/lib64:/home/akirakawata/build_static_libtorch/install/lib:/home/akirakawata/build_static_libtorch/"
+                       "lib:/home/akirakawata/chest-xray/deploy/build/pfvm/third_party/libtorch/lib:/usr/local/cuda/lib64/stubs"));
 
         if (uintptr_t ptr = main_binary_->init()) {
             MakeDyn(DT_INIT, ptr + offsets_[main_binary_.get()]);
@@ -603,6 +608,7 @@ private:
             Syminfo* found = NULL;
             for (int i = 0; i < symtab.size(); i++) {
                 if (symtab[i].name == p.name && symtab[i].soname == p.soname && symtab[i].version == p.version) {
+                    // if (symtab[i].name == p.name) {
                     found = &symtab[i];
                     break;
                 }
@@ -780,6 +786,7 @@ private:
 
         library_paths.push_back("/lib");
         library_paths.push_back("/usr/lib");
+        library_paths.push_back("/usr/local/cuda/lib64");
 
         return library_paths;
     }

@@ -48,8 +48,9 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
     } else {
         Syminfo* found = NULL;
         for (int i = 0; i < src_syms_.size(); i++) {
-            if (src_syms_[i].name == name && src_syms_[i].soname == soname && src_syms_[i].version == version) {
-                found = &src_syms_[i];
+            // if (src_syms_[i].name == name && src_syms_[i].soname == soname && src_syms_[i].version == version) {
+            if (src_syms_[i].name == name) {
+                if (found == NULL || IsDefined(*src_syms_[i].sym)) found = &src_syms_[i];
             }
         }
 

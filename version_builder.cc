@@ -66,7 +66,8 @@ void VersionBuilder::EmitVerneed(FILE* fp, StrtabBuilder& strtab) {
 
             Elf_Vernaux a;
             a.vna_hash = CalcHash(m2.first);
-            a.vna_flags = VER_FLG_WEAK;
+            // a.vna_flags = VER_FLG_WEAK;
+            a.vna_flags = 0;
             a.vna_other = m2.second;
             a.vna_name = strtab.GetPos(m2.first);
             a.vna_next = (n_vernaux == m1.second.size()) ? 0 : sizeof(Elf_Vernaux);
