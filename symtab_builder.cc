@@ -48,9 +48,17 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
     } else {
         Syminfo* found = NULL;
         for (int i = 0; i < src_syms_.size(); i++) {
-            // if (src_syms_[i].name == name && src_syms_[i].soname == soname && src_syms_[i].version == version) {
-            if (src_syms_[i].name == name) {
+            if (src_syms_[i].name == name && src_syms_[i].soname == soname && src_syms_[i].version == version) {
+                // if (src_syms_[i].name == name) {
+                if (src_syms_[i].soname != soname || src_syms_[i].version != version) {
+                    LOGF(
+                        "src_syms_[i].name = %s, name = %s, src_syms_[i].soname = %s, soname = %s, src_syms_[i].version = %s, version  = "
+                        "%s\n",
+                        src_syms_[i].name.c_str(), name.c_str(), src_syms_[i].soname.c_str(), soname.c_str(), src_syms_[i].version.c_str(),
+                        version.c_str());
+                }
                 if (found == NULL || IsDefined(*src_syms_[i].sym)) found = &src_syms_[i];
+                // found = &src_syms_[i];
             }
         }
 

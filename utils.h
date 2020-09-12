@@ -19,7 +19,9 @@
 #define Elf_Xword Elf64_Xword
 #define Elf_Word Elf64_Word
 #define Elf_Vernaux Elf64_Vernaux
+#define Elf_Verdaux Elf64_Verdaux
 #define Elf_Verneed Elf64_Verneed
+#define Elf_Verdef Elf64_Verdef
 #define ELF_ST_BIND(val) ELF64_ST_BIND(val)
 #define ELF_ST_TYPE(val) ELF64_ST_TYPE(val)
 #define ELF_ST_INFO(bind, type) ELF64_ST_INFO(bind, type)

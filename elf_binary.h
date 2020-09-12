@@ -67,13 +67,13 @@ public:
 
     std::string ShowDtRela();
 
-    std::string ShowVersym(int index);
+    // std::string ShowVersym(int index);
 
-    std::string ShowVerneed();
+    std::string ShowVersion();
 
     std::string ShowTLS();
 
-    std::pair<std::string, std::string> GetVerneed(int index);
+    std::pair<std::string, std::string> GetVersion(int index);
 
 private:
     void ParsePhdrs();
@@ -121,7 +121,9 @@ private:
 
     Elf_Versym* versym_{nullptr};
     Elf_Verneed* verneed_{nullptr};
+    Elf_Verdef* verdef_{nullptr};
     Elf_Xword verneednum_{0};
+    Elf_Xword verdefnum_{0};
 };
 
 std::unique_ptr<ELFBinary> ReadELF(const std::string& filename);

@@ -45,10 +45,10 @@ add_executable(
 target_link_libraries(print_tls sold_lib)
 
 add_executable(
-  print_verneed
-  print_verneed.cc
+  print_version
+  print_version.cc
   )
-target_link_libraries(print_verneed sold_lib)
+target_link_libraries(print_version sold_lib)
 
 add_subdirectory(tests)
 

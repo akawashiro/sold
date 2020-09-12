@@ -15,6 +15,6 @@ int main(int argc, const char* argv[]) {
     }
 
     auto b = ReadELF(argv[1]);
-    std::cout << b->ShowVerneed();
+    std::cout << b->ShowVersion();
     return 0;
 }
