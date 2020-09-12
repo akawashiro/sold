@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cstring>
 #include <numeric>
 #include <set>
@@ -89,10 +90,12 @@ std::set<int> CollectSymbolsFromGnuHash(Elf_GnuHash* gnu_hash) {
 }
 
 std::set<int> CollectSymbolsFromElfHash(Elf_Hash* hash) {
+    LOGF("CollectSymbolsFromElfHash\n");
     std::set<int> indices;
     const uint32_t* buckets = hash->buckets();
     for (size_t i = 0; i < hash->nbuckets; ++i) {
         int n = buckets[i];
+        LOGF("CollectSymbolsFromElfHash n = %d\n", n);
         indices.insert(n);
     }
     return indices;
@@ -119,7 +122,11 @@ void ELFBinary::ReadDynSymtab() {
     for (int idx : CollectSymbolsFromReloc(rel_, num_rels_)) indices.insert(idx);
     for (int idx : CollectSymbolsFromReloc(plt_rel_, num_plt_rels_)) indices.insert(idx);
 
-    for (int idx : indices) {
+    // TODO(akawashiro)
+    // This is a dirty hack. However, some symbols are not in the hash table.
+    // In order to find such symbols, we must take brute-force strategy instead
+    // of "for (int idx : indices)".
+    for (int idx = *std::min_element(indices.begin(), indices.end()); idx <= *std::max_element(indices.begin(), indices.end()); ++idx) {
         // TODO(hamaji): Handle version symbols.
         Elf_Sym* sym = &symtab_[idx];
         if (sym->st_name == 0) continue;

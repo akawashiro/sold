@@ -287,6 +287,7 @@ private:
         for (const std::string& needed : neededs) {
             MakeDyn(DT_NEEDED, AddStr(needed));
         }
+        // MakeDyn(DT_NEEDED, AddStr("libnvrtc.so.10.2"));
         if (!main_binary_->rpath().empty()) {
             LOGF("MakeDyn(DT_RPATH, AddStr(main_binary_->rpath()))\n");
             MakeDyn(DT_RPATH, AddStr(main_binary_->rpath()));
