@@ -104,7 +104,7 @@ std::set<int> CollectSymbolsFromElfHash(const std::string& name, Elf_Hash* hash)
 
 void ELFBinary::ReadDynSymtab() {
     CHECK(symtab_);
-    LOGF("Read dynsymtab of %s\n", name().c_str());
+    LOG(INFO) << "Read dynsymtab of " << name();
 
     // Since we only rely on program headers and do not read section headers
     // at all, we do not know the exact size of .dynsym section. We collect
@@ -125,19 +125,19 @@ void ELFBinary::ReadDynSymtab() {
         // TODO(hamaji): Handle version symbols.
         Elf_Sym* sym = &symtab_[idx];
         if (sym->st_name == 0) continue;
-        const std::string name(strtab_ + sym->st_name);
+        const std::string symname(strtab_ + sym->st_name);
 
         nsyms_++;
-        LOGF("%s@%s index in .dynsym = %d\n", name.c_str(), name_.c_str(), idx);
+        LOG(INFO) << symname << "@" << name() << " index in .dynsym = " << idx;
 
         // Get version information coresspoinds to idx
         auto p = GetVersion(idx);
         Elf_Versym v = (versym_) ? versym_[idx] : -1;
 
-        syms_.push_back(Syminfo{name, p.first, p.second, v, sym});
+        syms_.push_back(Syminfo{symname, p.first, p.second, v, sym});
     }
 
-    LOGF("nsyms_ = %d\n", nsyms_);
+    LOG(INFO) << "nsyms_ = " << nsyms_;
 }
 
 Elf_Phdr* ELFBinary::FindPhdr(uint64_t type) {
@@ -157,12 +157,12 @@ const Elf_Phdr& ELFBinary::GetPhdr(uint64_t type) {
 
 // GetVerneed returns (soname, version)
 std::pair<std::string, std::string> ELFBinary::GetVersion(int index) {
-    LOGF("GetVerneed\n");
+    LOG(INFO) << "GetVerneed";
     if (!versym_) {
         return std::make_pair("", "");
     }
 
-    LOGF("GetVerneed versym_[index] = %d\n", versym_[index]);
+    LOG(INFO) << SOLD_LOG_KEY(versym_[index]);
 
     if (is_special_ver_ndx(versym_[index])) {
         return std::make_pair("", "");
@@ -170,13 +170,16 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index) {
         if (verneed_) {
             Elf_Verneed* vn = verneed_;
             for (int i = 0; i < verneednum_; ++i) {
-                LOGF("VERNEED: ver=%d cnt=%d file=%s aux=%d next=%d\n", vn->vn_version, vn->vn_cnt, strtab_ + vn->vn_file, vn->vn_aux,
-                     vn->vn_next);
+                LOG(INFO) << "Elf_Verneed: " << SOLD_LOG_KEY(vn->vn_version) << SOLD_LOG_KEY(vn->vn_cnt)
+                          << SOLD_LOG_KEY(strtab_ + vn->vn_file) << SOLD_LOG_KEY(vn->vn_aux) << SOLD_LOG_KEY(vn->vn_next);
                 Elf_Vernaux* vna = (Elf_Vernaux*)((char*)vn + vn->vn_aux);
                 for (int j = 0; j < vn->vn_cnt; ++j) {
-                    LOGF(" VERNAUX: hash=%d flags=%d other=%d name=%s next=%d\n", vna->vna_hash, vna->vna_flags, vna->vna_other,
-                         strtab_ + vna->vna_name, vna->vna_next);
+                    LOG(INFO) << "Elf_Vernaux: " << SOLD_LOG_KEY(vna->vna_hash) << SOLD_LOG_KEY(vna->vna_flags)
+                              << SOLD_LOG_KEY(vna->vna_other) << SOLD_LOG_KEY(strtab_ + vna->vna_name) << SOLD_LOG_KEY(vna->vna_next);
+
                     if (vna->vna_other == versym_[index]) {
+                        LOG(INFO) << "Find Elf_Vernaux corresponds to " << versym_[index];
+                        LOG(INFO) << SOLD_LOG_KEY(strtab_ + vn->vn_file) << SOLD_LOG_KEY(strtab_ + vna->vna_name);
                         return std::make_pair(std::string(strtab_ + vn->vn_file), std::string(strtab_ + vna->vna_name));
                     }
 
@@ -184,7 +187,6 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index) {
                 }
                 vn = (Elf_Verneed*)((char*)vn + vn->vn_next);
             }
-            LOGF("Failed to find Elf_Vernaux corresponds to %d\n", versym_[index]);
         }
         if (verdef_) {
             Elf_Verdef* vd = verdef_;
@@ -202,8 +204,14 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index) {
                 }
                 vd = (Elf_Verdef*)((char*)vd + vd->vd_next);
             }
-            if (soname != "" && version != "") return std::make_pair(soname, version);
+            if (soname != "" && version != "") {
+                LOG(INFO) << "Find Elf_Verdef corresponds to " << versym_[index];
+                LOG(INFO) << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
+                return std::make_pair(soname, version);
+            }
         }
+
+        LOG(WARNING) << "Find no entry corresponds to " << versym_[index];
         return std::make_pair("", "");
     }
 }
@@ -213,13 +221,12 @@ void ELFBinary::PrintVersyms() {
 
     for (int i = 0; i < nsyms_ + 1; i++) {
         if (is_special_ver_ndx(versym_[i])) {
-            LOGF("VERSYM: %s\n", special_ver_ndx_to_str(versym_[i]).c_str());
+            LOG(INFO) << "VERSYM: " << special_ver_ndx_to_str(versym_[i]);
         } else {
-            LOGF("VERSYM: %d\n", versym_[i]);
+            LOG(INFO) << "VERSYM: " << versym_[i];
         }
     }
 }
-
 
 std::string ELFBinary::ShowVersion() {
     std::stringstream ss;
@@ -269,7 +276,7 @@ void ELFBinary::ParsePhdrs() {
         if (phdr->p_type == PT_DYNAMIC) {
             ParseDynamic(phdr->p_offset, phdr->p_filesz);
         } else if (phdr->p_type == PT_INTERP) {
-            LOGF("Found PT_INTERP.\n");
+            LOG(INFO) << "Found PT_INTERP.";
         }
     }
     CHECK(!phdrs_.empty());
@@ -368,12 +375,12 @@ Elf_Addr ELFBinary::OffsetFromAddr(Elf_Addr addr) {
             return addr - phdr->p_vaddr + phdr->p_offset;
         }
     }
-    LOGF("Address %llx cannot be resolved\n", static_cast<long long>(addr));
+    LOG(INFO) << "Address " << static_cast<long long>(addr) << " cannot be resolved";
     abort();
 }
 
 std::string ELFBinary::ShowDynSymtab() {
-    LOGF("ShowDynSymtab\n");
+    LOG(INFO) << "ShowDynSymtab";
     std::stringstream ss;
     for (auto it : syms_) {
         ss << it.name << ": ";
@@ -392,7 +399,7 @@ std::string ELFBinary::ShowDynSymtab() {
 }
 
 std::string ELFBinary::ShowDtRela() {
-    LOGF("ShowDtRela\n");
+    LOG(INFO) << "ShowDtRela";
     CHECK(rel_);
     std::stringstream ss;
     ss << "num_rels_ = " << num_rels_ << std::endl;
@@ -408,7 +415,7 @@ std::string ELFBinary::ShowDtRela() {
 }
 
 std::string ELFBinary::ShowTLS() {
-    LOGF("ShowTLS\n");
+    LOG(INFO) << "ShowTLS";
     std::stringstream ss;
 
     ss << "p_offset = " << tls_->p_offset << std::endl;

@@ -252,7 +252,7 @@ private:
 
     void BuildInterp() {
         const std::string interp = main_binary_->head() + main_binary_->GetPhdr(PT_INTERP).p_offset;
-        LOGF("Interp: %s\n", interp.c_str());
+        LOG(INFO) << "Interp: " << interp;
         interp_offset_ = AddStr(interp);
     }
 
@@ -541,11 +541,12 @@ private:
     }
 
     void CollectSymbols() {
+        LOG(INFO) << "CollectSymbols";
+
         std::vector<Syminfo> syms;
         for (ELFBinary* bin : link_binaries_) {
             LoadDynSymtab(bin, syms);
         }
-        LOGF("CollectSymbols\n");
         for (auto s : syms) {
             LOGF("SYM %s\n", s.name.c_str());
         }
@@ -553,7 +554,8 @@ private:
     }
 
     void PrintAllVersion() {
-        LOGF("PrintAllVersion\n");
+        LOG(INFO) << "PrintAllVersion";
+
         for (ELFBinary* bin : link_binaries_) {
             LOGF("==== %s ====\n", bin->filename().c_str());
             std::cout << bin->ShowVersion() << std::endl;
@@ -561,7 +563,8 @@ private:
     }
 
     void PrintAllVersyms() {
-        LOGF("PrintAllVersyms\n");
+        LOG(INFO) << "PrintAllVersyms";
+
         for (ELFBinary* bin : link_binaries_) {
             LOGF("==== %s ====\n", bin->filename().c_str());
             bin->PrintVersyms();
@@ -625,7 +628,7 @@ private:
         for (const auto& p : main_binary_->GetSymbolMap()) {
             const Elf_Sym* sym = p.sym;
             if (ELF_ST_BIND(sym->st_info) == STB_GLOBAL && IsDefined(*sym)) {
-                LOGF("Copy public symbol %s\n", p.name.c_str());
+                LOG(INFO) << "Copy public symbol " << p.name;
                 syms_.AddPublicSymbol(p);
             }
         }
@@ -634,7 +637,7 @@ private:
             for (const auto& p : bin->GetSymbolMap()) {
                 const Elf_Sym* sym = p.sym;
                 if (IsTLS(*sym)) {
-                    LOGF("Copy TLS symbol %s\n", p.name.c_str());
+                    LOG(INFO) << "Copy TLS symbol " << p.name;
                     syms_.AddPublicSymbol(p);
                 }
             }
@@ -679,7 +682,7 @@ private:
             newrel.r_offset += offset;
         }
 
-        LOGF("Relocate %s at %lx\n", bin->Str(sym->st_name), rel->r_offset);
+        LOG(INFO) << "Relocate " << bin->Str(sym->st_name) << " at " << rel->r_offset;
 
         switch (type) {
             case R_X86_64_RELATIVE: {
@@ -720,7 +723,7 @@ private:
             }
 
             default:
-                LOGF("Unknown relocation type: %d\n", type);
+                LOG(FATAL) << "Unknown relocation type: " << type;
                 CHECK(false);
         }
 
@@ -751,7 +754,7 @@ private:
         replace(out, "$ORIGIN", origin);
         replace(out, "${ORIGIN}", origin);
         if (out.find('$') != std::string::npos) {
-            LOGF("Unsupported runpath: %s\n", runpath.c_str());
+            LOG(INFO) << "Unsupported runpath: " << runpath;
             abort();
         }
         return out;
@@ -802,14 +805,14 @@ private:
                 }
             }
             if (!library) {
-                LOGF("Library %s not found\n", needed.c_str());
+                LOG(FATAL) << "Library " << needed << " not found";
                 abort();
             }
             if (ShouldLink(library->soname())) {
                 link_binaries_.push_back(library.get());
             }
 
-            LOGF("Loaded: %s => %s\n", needed.c_str(), library->filename().c_str());
+            LOG(INFO) << "Loaded: " << needed << " => " << library->filename();
 
             auto inserted = libraries_.emplace(needed, std::move(library));
             CHECK(inserted.second);
@@ -890,6 +893,8 @@ The last argument is interpreted as SOURCE_FILE when -i option isn't given.
 }
 
 int main(int argc, char* const argv[]) {
+    google::InitGoogleLogging(argv[0]);
+
     static option long_options[] = {
         {"help", no_argument, nullptr, 'h'},
         {"input-file", required_argument, nullptr, 'i'},

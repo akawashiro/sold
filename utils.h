@@ -7,6 +7,11 @@
 #include <string>
 #include <vector>
 
+#include <glog/logging.h>
+
+#define SOLD_LOG_KEY_VALUE(key, value) " " << LogBlue(key) << "=" << value
+#define SOLD_LOG_KEY(key) SOLD_LOG_KEY_VALUE(#key, key)
+
 #define Elf_Ehdr Elf64_Ehdr
 #define Elf_Phdr Elf64_Phdr
 #define Elf_Dyn Elf64_Dyn
@@ -30,12 +35,7 @@
 #define ELF_R_TYPE(val) ELF64_R_TYPE(val)
 #define ELF_R_INFO(sym, type) ELF64_R_INFO(sym, type)
 
-#define CHECK(r)             \
-    do {                     \
-        if (!(r)) assert(r); \
-    } while (0)
-
-const bool FLAGS_LOG{false};
+const bool FLAGS_LOG{true};
 extern bool QUIET_LOG;
 
 #ifdef NOLOG
@@ -44,15 +44,41 @@ extern bool QUIET_LOG;
         if (QUIET_LOG) break;                                   \
         if (0) fprintf(stderr, "%s, %d: ", __FILE__, __LINE__); \
         fprintf(stderr, __VA_ARGS__);                           \
-    } while(0)
+    } while (0)
 #else
 #define LOGF(...)                                                       \
     do {                                                                \
         if (QUIET_LOG) break;                                           \
         if (FLAGS_LOG) fprintf(stderr, "%s, %d: ", __FILE__, __LINE__); \
         fprintf(stderr, __VA_ARGS__);                                   \
-    } while(0)
+    } while (0)
 #endif
+
+template <class Stream>
+inline void CatToStream(Stream& oss) {}
+
+template <class Stream, class Arg0, class... Args>
+inline void CatToStream(Stream& oss, Arg0 arg0, Args... args) {
+    oss << arg0;
+    CatToStream(oss, args...);
+}
+
+template <class... Args>
+inline std::string StrCat(Args... args) {
+    std::ostringstream oss;
+    CatToStream(oss, args...);
+    return oss.str();
+}
+
+const std::string& LogGreen();
+const std::string& LogBlue();
+const std::string& LogYellow();
+const std::string& LogRed();
+const std::string& LogReset();
+std::string LogGreen(const std::string& msg);
+std::string LogBlue(const std::string& msg);
+std::string LogYellow(const std::string& msg);
+std::string LogRed(const std::string& msg);
 
 std::vector<std::string> SplitString(const std::string& str, const std::string& sep);
 
