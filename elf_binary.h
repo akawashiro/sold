@@ -95,6 +95,7 @@ private:
     Elf_Sym* symtab_{nullptr};
 
     std::vector<std::string> neededs_;
+    // This is a name specified in the DT_SONAME field.
     std::string soname_;
     std::string runpath_;
     std::string rpath_;
@@ -112,6 +113,7 @@ private:
     std::vector<uintptr_t> init_array_;
     std::vector<uintptr_t> fini_array_;
 
+    // This is a name on the filsysytem
     std::string name_;
     std::vector<Syminfo> syms_;
 

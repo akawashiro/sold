@@ -276,7 +276,7 @@ private:
 
     void BuildDynamic() {
         std::set<ELFBinary*> linked(link_binaries_.begin(), link_binaries_.end());
-        std::set<std::string> neededs;
+        std::set<std::string> neededs = {"libgomp-7c85b1e2.so.1"};
         for (const auto& p : libraries_) {
             ELFBinary* bin = p.second.get();
             if (!linked.count(bin)) {
@@ -601,7 +601,7 @@ private:
             } else if (sym->st_value) {
                 sym->st_value += offset;
             }
-            LOGF("Symbol %s@%s %08lx\n", name.c_str(), bin->name().c_str(), sym->st_value);
+            LOG(INFO) << "Symbol " << name << "@" << bin->name() << " " << sym->st_value;
 
             Syminfo* found = NULL;
             for (int i = 0; i < symtab.size(); i++) {

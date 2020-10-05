@@ -9,7 +9,7 @@
 
 #include <glog/logging.h>
 
-#define SOLD_LOG_KEY_VALUE(key, value) " " << LogBlue(key) << "=" << value
+#define SOLD_LOG_KEY_VALUE(key, value) " " << key << "=" << value
 #define SOLD_LOG_KEY(key) SOLD_LOG_KEY_VALUE(#key, key)
 
 #define Elf_Ehdr Elf64_Ehdr

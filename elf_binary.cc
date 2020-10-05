@@ -24,6 +24,7 @@ ELFBinary::ELFBinary(const std::string& filename, int fd, char* head, size_t siz
         } else {
             name_ = filename.substr(found + 1);
         }
+        LOG(INFO) << SOLD_LOG_KEY(name_);
     }
 
     ParsePhdrs();
@@ -178,8 +179,8 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index) {
                               << SOLD_LOG_KEY(vna->vna_other) << SOLD_LOG_KEY(strtab_ + vna->vna_name) << SOLD_LOG_KEY(vna->vna_next);
 
                     if (vna->vna_other == versym_[index]) {
-                        LOG(INFO) << "Find Elf_Vernaux corresponds to " << versym_[index];
-                        LOG(INFO) << SOLD_LOG_KEY(strtab_ + vn->vn_file) << SOLD_LOG_KEY(strtab_ + vna->vna_name);
+                        LOG(INFO) << "Find Elf_Vernaux corresponds to " << versym_[index] << SOLD_LOG_KEY(strtab_ + vn->vn_file)
+                                  << SOLD_LOG_KEY(strtab_ + vna->vna_name);
                         return std::make_pair(std::string(strtab_ + vn->vn_file), std::string(strtab_ + vna->vna_name));
                     }
 
@@ -195,7 +196,7 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index) {
                 Elf_Verdaux* vda = (Elf_Verdaux*)((char*)vd + vd->vd_aux);
                 for (int j = 0; j < vd->vd_cnt; ++j) {
                     if (vd->vd_flags & VER_FLG_BASE) {
-                        soname = std::string(strtab_ + vda->vda_name);
+                        soname = name();
                     }
                     if (vd->vd_ndx == versym_[index]) {
                         version = std::string(strtab_ + vda->vda_name);
@@ -205,8 +206,7 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index) {
                 vd = (Elf_Verdef*)((char*)vd + vd->vd_next);
             }
             if (soname != "" && version != "") {
-                LOG(INFO) << "Find Elf_Verdef corresponds to " << versym_[index];
-                LOG(INFO) << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
+                LOG(INFO) << "Find Elf_Verdef corresponds to " << versym_[index] << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
                 return std::make_pair(soname, version);
             }
         }
@@ -354,7 +354,7 @@ void ELFBinary::ParseDynamic(size_t off, size_t size) {
             const char* needed = strtab_ + dyn->d_un.d_val;
             neededs_.push_back(needed);
         } else if (dyn->d_tag == DT_SONAME) {
-            name_ = soname_ = strtab_ + dyn->d_un.d_val;
+            soname_ = strtab_ + dyn->d_un.d_val;
         } else if (dyn->d_tag == DT_RUNPATH) {
             runpath_ = strtab_ + dyn->d_un.d_val;
         } else if (dyn->d_tag == DT_RPATH) {

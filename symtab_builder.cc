@@ -60,15 +60,15 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
         if (found != src_syms_.end()) {
             sym.sym = *found->second.second;
             if (IsDefined(sym.sym)) {
-                LOGF("Symbol %s found\n", name.c_str());
+                LOG(INFO) << "Symbol (" << name << ", " << soname << ", " << version << ") found";
             } else {
-                LOGF("Symbol (undef/weak) %s found\n", name.c_str());
+                LOG(INFO) << "Symbol (undef/weak) (" << name << ", " << soname << ", " << version << ") found";
                 Syminfo s{name, soname, version, newver(found->second.first), NULL};
                 sym.index = AddSym(s);
                 CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
             }
         } else {
-            LOGF("Symbol %s not found\n", name.c_str());
+            LOG(INFO) << "Symbol (" << name << ", " << soname << ", " << version << ") not found";
             Syminfo s{name, soname, version, VER_NDX_LOCAL, NULL};
             sym.index = AddSym(s);
             CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
@@ -101,13 +101,13 @@ uintptr_t SymtabBuilder::ResolveCopy(const std::string& name, const std::string&
         auto found = src_syms_.find({name, soname, version});
 
         if (found != src_syms_.end()) {
-            LOGF("Symbol %s found for copy\n", name.c_str());
+            LOG(INFO) << "Symbol " << name << " found for copy";
             sym.sym = *found->second.second;
             Syminfo s{name, soname, version, newver(found->second.first), NULL};
             sym.index = AddSym(s);
             CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
         } else {
-            LOGF("Symbol %s not found for copy\n", name.c_str());
+            LOG(INFO) << "Symbol " << name << " not found for copy";
             CHECK(false);
         }
     }
@@ -117,7 +117,7 @@ uintptr_t SymtabBuilder::ResolveCopy(const std::string& name, const std::string&
 
 void SymtabBuilder::Build(StrtabBuilder& strtab, VersionBuilder& version) {
     for (const auto& s : exposed_syms_) {
-        LOGF("SymtabBuilder::Build %s\n", s.name.c_str());
+        LOG(INFO) << "SymtabBuilder::Build " << s.name;
 
         auto found = syms_.find({s.name, s.soname, s.version});
         CHECK(found != syms_.end());
@@ -141,7 +141,7 @@ void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& ve
     gnu_hash_.shift2 = 1;
 
     for (const auto& p : public_syms_) {
-        LOGF("SymtabBuilder::MergePublicSymbols %s\n", p.name.c_str());
+        LOG(INFO) << "SymtabBuilder::MergePublicSymbols " << p.name;
 
         const std::string& name = p.name;
         Elf_Sym* sym = new Elf_Sym;
