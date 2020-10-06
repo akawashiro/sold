@@ -38,8 +38,6 @@ uint32_t ShdrBuilder::GetShName(ShdrType type) const {
 }
 
 void ShdrBuilder::EmitShdrs(FILE* fp) {
-    LOGF("EmitShdrs\n");
-
     Elf_Shdr shstrtab;
     bool found_shstrtab = false;
     int num_not_shstrtab = 0;

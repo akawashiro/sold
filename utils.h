@@ -3,7 +3,9 @@
 #include <elf.h>
 
 #include <cassert>
+#include <iomanip>
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -70,16 +72,6 @@ inline std::string StrCat(Args... args) {
     return oss.str();
 }
 
-const std::string& LogGreen();
-const std::string& LogBlue();
-const std::string& LogYellow();
-const std::string& LogRed();
-const std::string& LogReset();
-std::string LogGreen(const std::string& msg);
-std::string LogBlue(const std::string& msg);
-std::string LogYellow(const std::string& msg);
-std::string LogRed(const std::string& msg);
-
 std::vector<std::string> SplitString(const std::string& str, const std::string& sep);
 
 bool HasPrefix(const std::string& str, const std::string& prefix);
@@ -126,3 +118,10 @@ struct TLS {
 bool is_special_ver_ndx(Elf64_Versym v);
 
 std::string special_ver_ndx_to_str(Elf64_Versym v);
+
+template <class T>
+std::string HexString(T num, int length = 16) {
+    std::stringstream ss;
+    ss << "0x" << std::uppercase << std::setfill('0') << std::setw(length) << std::hex << num;
+    return ss.str();
+}

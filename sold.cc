@@ -51,8 +51,6 @@ public:
         CollectTLS();
         CollectArrays();
         CollectSymbols();
-        PrintAllVersion();
-        PrintAllVersyms();
         CopyPublicSymbols();
         Relocate();
 
@@ -467,7 +465,8 @@ private:
         for (const Load& load : loads_) {
             ELFBinary* bin = load.bin;
             Elf_Phdr* phdr = load.orig;
-            LOGF("Emitting code of %s from %lx => %lx +%lx\n", bin->name().c_str(), ftell(fp), load.emit.p_offset, phdr->p_filesz);
+            LOG(INFO) << "Emitting code of " << bin->name() << " from " << HexString(ftell(fp)) << " => " << HexString(load.emit.p_offset)
+                      << " + " << HexString(phdr->p_filesz);
             EmitPad(fp, load.emit.p_offset);
             WriteBuf(fp, bin->head() + phdr->p_offset, phdr->p_filesz);
         }
@@ -492,7 +491,7 @@ private:
             const Range range = bin->GetRange() + offset;
             CHECK(range.start == offset);
             offsets_.emplace(bin, range.start);
-            LOGF("Assigned: %s %08lx-%08lx\n", bin->soname().c_str(), range.start, range.end);
+            LOG(INFO) << "Assigned: " << bin->soname() << " " << HexString(range.start, 8) << "-" << HexString(range.end, 8);
             offset = range.end;
         }
         tls_offset_ = offset;
@@ -517,10 +516,12 @@ private:
 
         for (TLS::Data& d : tls_.data) {
             d.bss_offset += tls_.filesz;
-            LOGF("TLS of %s: file=%lx +%lx mem=%lx\n", d.bin->name().c_str(), d.file_offset, d.size, d.bss_offset);
+            LOG(INFO) << "TLS of " << d.bin->name() << ": file=" << HexString(d.file_offset) << " + " << HexString(d.size)
+                      << " mem=" << HexString(d.bss_offset);
         }
 
-        LOGF("TLS: filesz=%lx memsz=%lx cnt=%zu\n", tls_.filesz, tls_.memsz, tls_.data.size());
+        LOG(INFO) << "TLS: filesz=" << HexString(tls_.filesz) << " memsz=" << HexString(tls_.memsz)
+                  << " cnt=" << HexString(tls_.data.size());
     }
 
     void CollectArrays() {
@@ -537,7 +538,7 @@ private:
                 fini_array_.push_back(ptr + offset);
             }
         }
-        LOGF("Array numbers: init_array=%zu fini_array=%zu\n", init_array_.size(), fini_array_.size());
+        LOG(INFO) << "Array numbers: init_array=" << init_array_.size() << " fini_array=" << fini_array_.size();
     }
 
     void CollectSymbols() {
@@ -548,7 +549,7 @@ private:
             LoadDynSymtab(bin, syms);
         }
         for (auto s : syms) {
-            LOGF("SYM %s\n", s.name.c_str());
+            LOG(INFO) << "SYM " << s.name;
         }
         syms_.SetSrcSyms(syms);
     }
@@ -557,7 +558,6 @@ private:
         LOG(INFO) << "PrintAllVersion";
 
         for (ELFBinary* bin : link_binaries_) {
-            LOGF("==== %s ====\n", bin->filename().c_str());
             std::cout << bin->ShowVersion() << std::endl;
         }
     }
@@ -566,7 +566,6 @@ private:
         LOG(INFO) << "PrintAllVersyms";
 
         for (ELFBinary* bin : link_binaries_) {
-            LOGF("==== %s ====\n", bin->filename().c_str());
             bin->PrintVersyms();
         }
     }
@@ -579,10 +578,12 @@ private:
         CHECK(found != tls_.bin_to_index.end());
         const TLS::Data& entry = tls_.data[found->second];
         if (off < tls->p_filesz) {
-            LOGF("TLS data %s in %s remapped %lx => %lx\n", msg, bin->name().c_str(), off, off + entry.file_offset);
+            LOG(INFO) << "TLS data " << msg << " in " << bin->name() << " remapped " << HexString(off) << " => "
+                      << HexString(off + entry.file_offset);
             off += entry.file_offset;
         } else {
-            LOGF("TLS bss %s in %s remapped %lx => %lx\n", msg, bin->name().c_str(), off, off + entry.bss_offset);
+            LOG(INFO) << "TLS bss " << msg << " in " << bin->name() << " remapped " << HexString(off) << " => "
+                      << HexString(off + entry.bss_offset);
             off += entry.bss_offset;
         }
         return off;

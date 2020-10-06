@@ -5,7 +5,7 @@ void VersionBuilder::Add(Elf_Versym versym, std::string soname, std::string vers
     if (version != "") strtab.Add(version);
 
     if (is_special_ver_ndx(versym)) {
-        LOGF("VersionBuilder::%s\n", special_ver_ndx_to_str(versym).c_str());
+        LOG(INFO) << "VersionBuilder::" << special_ver_ndx_to_str(versym);
         vers.push_back(versym);
     } else if (versym == NEED_NEW_VERNUM) {
         if (data.find(soname) != data.end()) {
@@ -21,10 +21,10 @@ void VersionBuilder::Add(Elf_Versym versym, std::string soname, std::string vers
             data[soname] = ma;
             vernum++;
         }
-        LOGF("VersionBuilder::Add(%d, %s, %s)\n", data[soname][version], soname.c_str(), version.c_str());
+        LOG(INFO) << "VersionBuilder::Add(" << data[soname][version] << ", " << soname << ", " << version << ")";
         vers.push_back(data[soname][version]);
     } else {
-        LOGF("Inappropriate versym = %d\n", versym);
+        LOG(INFO) << "Inappropriate versym = " << versym;
         exit(1);
     }
 }

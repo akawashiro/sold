@@ -46,3 +46,4 @@ std::string special_ver_ndx_to_str(Elf64_Versym versym) {
         exit(1);
     }
 }
+
