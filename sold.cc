@@ -274,11 +274,11 @@ private:
 
     void BuildDynamic() {
         std::set<ELFBinary*> linked(link_binaries_.begin(), link_binaries_.end());
-        std::set<std::string> neededs = {"libgomp-7c85b1e2.so.1"};
+        std::set<std::string> neededs;
         for (const auto& p : libraries_) {
             ELFBinary* bin = p.second.get();
             if (!linked.count(bin)) {
-                neededs.insert(bin->soname());
+                neededs.insert(bin->name());
             }
         }
 
