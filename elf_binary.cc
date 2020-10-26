@@ -201,15 +201,16 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index, const std::
             std::string soname, version;
             for (int i = 0; i < verdefnum_; ++i) {
                 Elf_Verdaux* vda = (Elf_Verdaux*)((char*)vd + vd->vd_aux);
-                for (int j = 0; j < vd->vd_cnt; ++j) {
-                    if (vd->vd_flags & VER_FLG_BASE) {
-                        soname = std::string(strtab_ + vda->vda_name);
-                    }
-                    if (vd->vd_ndx == versym_[index]) {
-                        version = std::string(strtab_ + vda->vda_name);
-                    }
-                    vda = (Elf_Verdaux*)((char*)vda + vda->vda_next);
+
+                if (vd->vd_flags & VER_FLG_BASE) {
+                    soname = std::string(strtab_ + vda->vda_name);
                 }
+                if ((vd->vd_ndx & 0x7fff) == (versym_[index] & 0x7fff)) {
+                    version = std::string(strtab_ + vda->vda_name);
+                    LOG(INFO) << SOLD_LOG_KEY(strtab_ + vda->vda_name);
+                }
+                vda = (Elf_Verdaux*)((char*)vda + vda->vda_next);
+
                 vd = (Elf_Verdef*)((char*)vd + vd->vd_next);
             }
             if (soname != "" && version != "") {
