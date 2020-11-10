@@ -133,7 +133,7 @@ void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename
 
         // Get version information coresspoinds to idx
         auto p = GetVersion(idx, filename_to_soname);
-        Elf_Versym v = (versym_) ? versym_[idx] : -1;
+        Elf_Versym v = (versym_) ? versym_[idx] : ((ELF_ST_BIND(sym->st_info) == STB_GLOBAL) ? VER_NDX_GLOBAL : VER_NDX_LOCAL);
 
         syms_.push_back(Syminfo{symname, p.first, p.second, v, sym});
     }
