@@ -1,25 +1,21 @@
 #include "version_builder.h"
 
 void VersionBuilder::Add(Elf_Versym versym, std::string soname, std::string version, StrtabBuilder& strtab) {
-    auto found_filename = soname_to_filename_.find(soname);
-    // TODO(akawashiro) We should not use soname as the default value of
-    // filename. However, I set the default value here, because simple-lib-g++
-    // test failed without it. I will fix it later.
-    std::string filename = soname;
-    if (found_filename != soname_to_filename_.end()) filename = found_filename->second;
-
-    if (filename != "") strtab.Add(filename);
-    if (version != "") strtab.Add(version);
-
     if (is_special_ver_ndx(versym)) {
+        CHECK(soname.empty() && version.empty()) << " excess soname or version information is given.";
         LOG(INFO) << "VersionBuilder::" << special_ver_ndx_to_str(versym);
+
         vers.push_back(versym);
     } else if (versym == NEED_NEW_VERNUM) {
-        if (found_filename == soname_to_filename_.end()) {
-            // TODO(akawashiro) This WARNING should be FATAL. But it is WARNING
-            // now for the same reason above.
-            LOG(WARNING) << soname << " does not exists in soname_to_filename." << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
-        }
+        CHECK(!soname.empty() && !version.empty());
+
+        auto found_filename = soname_to_filename_.find(soname);
+        CHECK(found_filename != soname_to_filename_.end())
+            << soname << " does not exists in soname_to_filename." << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
+        std::string filename = found_filename->second;
+
+        strtab.Add(filename);
+        strtab.Add(version);
 
         if (data.find(filename) != data.end()) {
             if (data[filename].find(version) != data[filename].end()) {
