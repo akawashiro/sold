@@ -126,8 +126,8 @@ uintptr_t SymtabBuilder::ResolveCopy(const std::string& name, const std::string&
 
 // Make a new symbol table(symtab_) from exposed_syms_.
 void SymtabBuilder::Build(StrtabBuilder& strtab, VersionBuilder& version) {
-    for (const auto& s : exposed_syms_) {
-        LOG(INFO) << "SymtabBuilder::Build " << SOLD_LOG_KEY(s.name) << SOLD_LOG_KEY(s.version) << SOLD_LOG_KEY(s.soname);
+    for (const Syminfo& s : exposed_syms_) {
+        LOG(INFO) << "SymtabBuilder::Build " << SOLD_LOG_KEY(s);
 
         auto found = syms_.find({s.name, s.soname, s.version});
         CHECK(found != syms_.end());

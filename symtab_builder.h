@@ -23,7 +23,10 @@ public:
 
     void MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& version);
 
-    void AddPublicSymbol(Syminfo s) { public_syms_.push_back(s); }
+    void AddPublicSymbol(Syminfo s) {
+        CHECK(is_special_ver_ndx(s.versym) || s.versym == VersionBuilder::NEED_NEW_VERNUM) << SOLD_LOG_KEY(s);
+        public_syms_.push_back(s);
+    }
 
     uintptr_t size() const { return symtab_.size() + public_syms_.size(); }
 

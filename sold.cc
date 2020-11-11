@@ -413,6 +413,7 @@ void Sold::CopyPublicSymbols() {
         // TODO(akawashiro) Do we need this IsDefined check?
         if (ELF_ST_BIND(sym->st_info) == STB_GLOBAL && IsDefined(*sym)) {
             LOG(INFO) << "Copy public symbol " << p.name;
+            CHECK(is_special_ver_ndx(p.versym) || p.versym == VersionBuilder::NEED_NEW_VERNUM) << SOLD_LOG_KEY(p);
             syms_.AddPublicSymbol(p);
         }
     }
@@ -422,6 +423,7 @@ void Sold::CopyPublicSymbols() {
             const Elf_Sym* sym = p.sym;
             if (IsTLS(*sym)) {
                 LOG(INFO) << "Copy TLS symbol " << p.name;
+                CHECK(is_special_ver_ndx(p.versym) || p.versym == VersionBuilder::NEED_NEW_VERNUM) << SOLD_LOG_KEY(p);
                 syms_.AddPublicSymbol(p);
             }
         }
