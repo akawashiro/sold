@@ -164,8 +164,11 @@ void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& ve
         // After I make complete section headers, I should fill it with the right section index.
         sym->st_shndx = 1;
 
-        // TODO(akawashiro) Is this versym value(VER_NDX_GLOBAL) is correct?
-        Syminfo s{p.name, p.soname, p.version, VER_NDX_GLOBAL, sym};
+        CHECK(is_special_ver_ndx(p.versym) || p.versym == VersionBuilder::NEED_NEW_VERNUM) << SOLD_LOG_KEY(p);
+        CHECK((!is_special_ver_ndx(p.versym) && !p.soname.empty() && !p.version.empty()) ||
+              (is_special_ver_ndx(p.versym) && p.soname.empty() && p.version.empty()));
+
+        Syminfo s{p.name, p.soname, p.version, p.versym, sym};
         exposed_syms_.push_back(s);
         symtab_.push_back(*sym);
 
