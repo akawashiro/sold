@@ -82,7 +82,7 @@ struct TLS {
 
 bool is_special_ver_ndx(Elf64_Versym v);
 
-std::string special_ver_ndx_to_str(Elf64_Versym v);
+std::string special_ver_ndx_to_str(Elf_Versym v);
 
 template <class T>
 std::string HexString(T num, int length = 16) {
