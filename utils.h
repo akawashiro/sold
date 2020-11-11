@@ -64,6 +64,8 @@ struct Syminfo {
     Elf_Sym* sym;
 };
 
+std::ostream& operator<<(std::ostream& os, const Syminfo& s);
+
 struct TLS {
     struct Data {
         ELFBinary* bin;

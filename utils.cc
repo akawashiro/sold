@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <iomanip>
 
 std::vector<std::string> SplitString(const std::string& str, const std::string& sep) {
     std::vector<std::string> ret;
@@ -28,6 +29,14 @@ bool IsTLS(const Elf_Sym& sym) {
 
 bool IsDefined(const Elf_Sym& sym) {
     return (sym.st_value || IsTLS(sym)) && sym.st_shndx != SHN_UNDEF;
+}
+
+std::ostream& operator<<(std::ostream& os, const Syminfo& s) {
+    auto f = os.flags();
+    os << "Syminfo{name=" << s.name << ", soname=" << s.soname << ", version=" << s.version << ", versym=" << s.versym << ", sym=0x"
+       << std::hex << std::setfill('0') << std::setw(16) << s.sym << "}";
+    os.flags(f);
+    return os;
 }
 
 bool is_special_ver_ndx(Elf64_Versym versym) {
