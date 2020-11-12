@@ -163,9 +163,6 @@ void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& ve
         // TODO(akawashiro)
         // I fill st_shndx with a dummy value which is not special section index.
         // After I make complete section headers, I should fill it with the right section index.
-        // TODO(akawashiro)
-        // Is this value(1) is appropriate?
-        // sym->st_shndx = 1;
         if (sym->st_shndx != SHN_UNDEF && sym->st_shndx < SHN_LORESERVE) sym->st_shndx = 1;
 
         CHECK(is_special_ver_ndx(p.versym) || p.versym == VersionBuilder::NEED_NEW_VERNUM) << SOLD_LOG_KEY(p);
@@ -176,11 +173,12 @@ void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& ve
 
         // When the symbol is already put to exposed_syms_ by
         // SymtabBuilder::Build, we skip it.
-        if(std::count_if(exposed_syms_.begin(), exposed_syms_.end(), [&s](const Syminfo& e){return (s.name == e.name && s.soname == e.soname && s.version == e.version);}) == 0){
-        exposed_syms_.push_back(s);
-        symtab_.push_back(*sym);
+        if (std::count_if(exposed_syms_.begin(), exposed_syms_.end(),
+                          [&s](const Syminfo& e) { return (s.name == e.name && s.soname == e.soname && s.version == e.version); }) == 0) {
+            exposed_syms_.push_back(s);
+            symtab_.push_back(*sym);
 
-        version.Add(s.versym, s.soname, s.version, strtab);
+            version.Add(s.versym, s.soname, s.version, strtab);
         }
     }
     public_syms_.clear();
