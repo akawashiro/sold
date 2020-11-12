@@ -160,6 +160,9 @@ void Sold::BuildDynamic() {
     for (const std::string& needed : neededs) {
         MakeDyn(DT_NEEDED, AddStr(needed));
     }
+    if(!main_binary_->soname().empty()){
+        MakeDyn(DT_SONAME, AddStr(main_binary_->soname()));
+    }
     if (!main_binary_->rpath().empty()) {
         MakeDyn(DT_RPATH, AddStr(main_binary_->rpath()));
     }
