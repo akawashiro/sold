@@ -160,7 +160,7 @@ void Sold::BuildDynamic() {
     for (const std::string& needed : neededs) {
         MakeDyn(DT_NEEDED, AddStr(needed));
     }
-    if(!main_binary_->soname().empty()){
+    if (!main_binary_->soname().empty()) {
         MakeDyn(DT_SONAME, AddStr(main_binary_->soname()));
     }
     if (!main_binary_->rpath().empty()) {
@@ -415,7 +415,7 @@ void Sold::CopyPublicSymbols() {
         const Elf_Sym* sym = p.sym;
         // TODO(akawashiro) Do we need this IsDefined check?
         if (ELF_ST_BIND(sym->st_info) == STB_GLOBAL && IsDefined(*sym)) {
-            LOG(INFO) << "Copy public symbol " << p.name;
+            LOG(INFO) << "Copy public symbol " << SOLD_LOG_KEY(p);
             CHECK(is_special_ver_ndx(p.versym) || p.versym == VersionBuilder::NEED_NEW_VERNUM) << SOLD_LOG_KEY(p);
             syms_.AddPublicSymbol(p);
         }
@@ -425,7 +425,7 @@ void Sold::CopyPublicSymbols() {
         for (const auto& p : bin->GetSymbolMap()) {
             const Elf_Sym* sym = p.sym;
             if (IsTLS(*sym)) {
-                LOG(INFO) << "Copy TLS symbol " << p.name;
+                LOG(INFO) << "Copy TLS symbol " << SOLD_LOG_KEY(p);
                 CHECK(is_special_ver_ndx(p.versym) || p.versym == VersionBuilder::NEED_NEW_VERNUM) << SOLD_LOG_KEY(p);
                 syms_.AddPublicSymbol(p);
             }
