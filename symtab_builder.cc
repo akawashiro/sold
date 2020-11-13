@@ -179,6 +179,8 @@ void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& ve
             symtab_.push_back(*sym);
 
             version.Add(s.versym, s.soname, s.version, strtab);
+        } else {
+            LOG(INFO) << SOLD_LOG_KEY(s) << " is already in symtab_. We skip it.";
         }
     }
     public_syms_.clear();
