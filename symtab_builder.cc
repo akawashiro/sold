@@ -149,7 +149,8 @@ void SymtabBuilder::Build(StrtabBuilder& strtab, VersionBuilder& version) {
 void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& version) {
     gnu_hash_.nbuckets = 1;
     CHECK(symtab_.size() <= std::numeric_limits<uint32_t>::max());
-    gnu_hash_.symndx = symtab_.size();
+    gnu_hash_.symndx = 1;
+    // gnu_hash_.symndx = symtab_.size();
     gnu_hash_.maskwords = 1;
     gnu_hash_.shift2 = 1;
 
