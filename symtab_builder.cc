@@ -34,7 +34,7 @@ uintptr_t SymtabBuilder::AddSym(const Syminfo& sym) {
     return index;
 }
 
-// Returns and fills st_value to value_or_index true when the symbol specified
+// Returns true and fills st_value to value_or_index when the symbol specified
 // with (name, soname, version) is defined.
 // When the specified symbol is not defined, SymtabBuilder::Resolve pushes it
 // to sym_ and exposed_syms_ and fills the index of the added symbol to
@@ -59,6 +59,10 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
             sym.sym = *found->second.second;
             if (IsDefined(sym.sym)) {
                 LOG(INFO) << "Symbol (" << name << ", " << soname << ", " << version << ") found";
+                // TODO(akawashiro) TABUN KOKO
+                Syminfo s{name, soname, version, found->second.first, NULL};
+                sym.index = AddSym(s);
+                CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
             } else {
                 LOG(INFO) << "Symbol (undef/weak) (" << name << ", " << soname << ", " << version << ") found";
                 Syminfo s{name, soname, version, found->second.first, NULL};
