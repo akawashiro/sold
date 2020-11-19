@@ -60,9 +60,9 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
             if (IsDefined(sym.sym)) {
                 LOG(INFO) << "Symbol (" << name << ", " << soname << ", " << version << ") found";
                 // TODO(akawashiro) TABUN KOKO
-                Syminfo s{name, soname, version, found->second.first, NULL};
-                sym.index = AddSym(s);
-                CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
+                // Syminfo s{name, soname, version, found->second.first, NULL};
+                // sym.index = AddSym(s);
+                // CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
             } else {
                 LOG(INFO) << "Symbol (undef/weak) (" << name << ", " << soname << ", " << version << ") found";
                 Syminfo s{name, soname, version, found->second.first, NULL};
@@ -142,7 +142,8 @@ void SymtabBuilder::Build(StrtabBuilder& strtab, VersionBuilder& version) {
 void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& version) {
     gnu_hash_.nbuckets = 1;
     CHECK(symtab_.size() <= std::numeric_limits<uint32_t>::max());
-    gnu_hash_.symndx = symtab_.size();
+    // gnu_hash_.symndx = symtab_.size();
+    gnu_hash_.symndx = 1;
     gnu_hash_.maskwords = 1;
     gnu_hash_.shift2 = 1;
 

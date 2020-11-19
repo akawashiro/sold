@@ -415,8 +415,8 @@ void Sold::CopyPublicSymbols() {
         const Elf_Sym* sym = p.sym;
 
         // TODO(akawashiro) Do we need this IsDefined check?
-        // if ((ELF_ST_BIND(sym->st_info) == STB_GLOBAL || ELF_ST_BIND(sym->st_info) == STB_WEAK) && IsDefined(*sym)) {
-        if (ELF_ST_BIND(sym->st_info) == STB_GLOBAL && IsDefined(*sym)) {
+        if ((ELF_ST_BIND(sym->st_info) == STB_GLOBAL || ELF_ST_BIND(sym->st_info) == STB_WEAK) && IsDefined(*sym)) {
+            // if (ELF_ST_BIND(sym->st_info) == STB_GLOBAL && IsDefined(*sym)) {
             LOG(INFO) << "Copy public symbol " << SOLD_LOG_KEY(p);
             syms_.AddPublicSymbol(p);
         } else {
