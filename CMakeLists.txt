@@ -60,6 +60,12 @@ add_executable(
     )
 target_link_libraries(print_version sold_lib glog)
 
+add_executable(
+    print_ehframe
+    print_ehframe.cc
+    )
+target_link_libraries(print_ehframe sold_lib glog)
+
 add_subdirectory(tests)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CTestCustom.cmake ${CMAKE_CURRENT_BINARY_DIR})

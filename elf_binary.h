@@ -14,6 +14,7 @@ struct CIE {
     uint8_t version;
     char* arg_str;
     uint8_t FDE_encoding;
+    uint8_t LSDA_encoding;
 };
 
 struct FDE {
@@ -38,6 +39,8 @@ struct EHFrameHeader {
     uint32_t fde_count;
 
     std::vector<FDETableEntry> table;
+    std::vector<FDE> fdes;
+    std::vector<CIE> cies;
 };
 
 class ELFBinary {
@@ -99,12 +102,10 @@ public:
     void PrintVersyms();
 
     std::string ShowDynSymtab();
-
     std::string ShowDtRela();
-
     std::string ShowVersion();
-
     std::string ShowTLS();
+    std::string ShowEHFrame();
 
     std::pair<std::string, std::string> GetVersion(int index, const std::map<std::string, std::string>& filename_to_soname);
 

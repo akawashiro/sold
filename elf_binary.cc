@@ -330,6 +330,10 @@ void ELFBinary::ParseEHFrameHeader(size_t off, size_t size) {
 
         FDE fde = {};
         CIE cie = {};
+        // 0xEE is not used in dwarf.h
+        cie.FDE_encoding = 0xEE;
+        cie.LSDA_encoding = 0xEE;
+
         int fde_offset = 0;
         int cie_offset = 0;
 
@@ -363,9 +367,14 @@ void ELFBinary::ParseEHFrameHeader(size_t off, size_t size) {
 
         if (*arg_head == 'z') {
             arg_head++;
+            cie_head++;
+            LOG(INFO) << SOLD_LOG_8BITS(*cie_head) << SOLD_LOG_KEY(*arg_head);
             while (1) {
                 /* This is what we're looking for.  */
-                if (*arg_head == 'R') cie.FDE_encoding = *cie_head;
+                if (*arg_head == 'R') {
+                    cie.FDE_encoding = *cie_head;
+                    cie_head++;
+                }
                 /* Personality encoding and pointer.  */
                 else if (*arg_head == 'P') {
                     /* ??? Avoid dereferencing indirect pointers, since we're
@@ -374,11 +383,17 @@ void ELFBinary::ParseEHFrameHeader(size_t off, size_t size) {
                     cie_head = read_encoded_value_with_base(*cie_head & 0x7F, 0, cie_head + 1, &utmp);
                 }
                 /* LSDA encoding.  */
-                else if (*arg_head == 'L')
+                else if (*arg_head == 'L') {
+                    cie.LSDA_encoding = *cie_head;
                     cie_head++;
+                }
                 /* Otherwise end of string, or unknown augmentation.  */
-                else
-                    cie.FDE_encoding = DW_EH_PE_absptr;
+                else {
+                    if (*arg_head != '\0') {
+                        LOG(WARNING) << "unknown augmentation" << SOLD_LOG_KEY(*arg_head) << SOLD_LOG_8BITS(*arg_head);
+                    }
+                    break;
+                }
                 arg_head++;
             }
         } else {
@@ -392,9 +407,40 @@ void ELFBinary::ParseEHFrameHeader(size_t off, size_t size) {
                   << "} FDE = {" << SOLD_LOG_32BITS(fde.length) << SOLD_LOG_64BITS(fde.extended_length) << SOLD_LOG_32BITS(fde.CIE_delta)
                   << SOLD_LOG_32BITS(fde.initial_loc) << SOLD_LOG_32BITS(off + e.fde_ptr + 8 + fde.initial_loc) << "} CIE = {"
                   << SOLD_LOG_32BITS(cie.length) << SOLD_LOG_32BITS(cie.CIE_id) << SOLD_LOG_8BITS(cie.version) << SOLD_LOG_KEY(cie.arg_str)
-                  << "}";
+                  << SOLD_LOG_DWEHPE(cie.FDE_encoding) << SOLD_LOG_DWEHPE(cie.LSDA_encoding) << "}";
         // 8 in (off + e.fde_ptr + 8 + fde.initial_loc) is for the offset of fde.initial_loc
+        CHECK(cie.FDE_encoding == (DW_EH_PE_sdata4 | DW_EH_PE_pcrel));
+        CHECK(cie.LSDA_encoding == (DW_EH_PE_sdata4 | DW_EH_PE_pcrel) || cie.LSDA_encoding == 0xEE);
+
+        eh_frame_header_.fdes.emplace_back(fde);
+        eh_frame_header_.cies.emplace_back(cie);
     }
+}
+
+std::string ELFBinary::ShowEHFrame() {
+    std::stringstream ss;
+
+    ss << "version: " << HexString(eh_frame_header_.version, 2) << "\n";
+    ss << "eh_frame_ptr_enc: " << ShowDW_EH_PE(eh_frame_header_.eh_frame_ptr_enc) << "\n";
+    ss << "fde_count_enc: " << ShowDW_EH_PE(eh_frame_header_.fde_count_enc) << "\n";
+    ss << "table_enc: " << ShowDW_EH_PE(eh_frame_header_.table_enc) << "\n";
+    ss << "eh_frame_ptr: " << HexString(eh_frame_header_.eh_frame_ptr, 8) << "\n";
+    ss << "fde_count: " << eh_frame_header_.fde_count << "\n";
+    for (int i = 0; i < eh_frame_header_.fde_count; i++) {
+        ss << "---------- table[" << i << "] ----------\n";
+        ss << "initial_loc: " << HexString(eh_frame_header_.table[i].initial_loc, 8) << "\n";
+        ss << "fde_ptr: " << HexString(eh_frame_header_.table[i].fde_ptr, 8) << "\n";
+        ss << "cie.length: " << HexString(eh_frame_header_.cies[i].length, 8) << "\n";
+        ss << "cie.CIE_id: " << HexString(eh_frame_header_.cies[i].CIE_id, 8) << "\n";
+        ss << "cie.version: " << HexString(eh_frame_header_.cies[i].version, 2) << "\n";
+        ss << "cie.FDE_encoding: " << ShowDW_EH_PE(eh_frame_header_.cies[i].FDE_encoding) << "\n";
+        ss << "cie.LSDA_encoding: " << ShowDW_EH_PE(eh_frame_header_.cies[i].LSDA_encoding) << "\n";
+        ss << "fde.length: " << HexString(eh_frame_header_.fdes[i].length, 8) << "\n";
+        ss << "fde.CIE_delta: " << HexString(eh_frame_header_.fdes[i].CIE_delta, 8) << "\n";
+        ss << "fde.initial_loc: " << HexString(eh_frame_header_.fdes[i].initial_loc, 8) << "\n";
+    }
+
+    return ss.str();
 }
 
 void ELFBinary::ParseDynamic(size_t off, size_t size) {

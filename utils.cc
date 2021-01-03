@@ -93,6 +93,13 @@ std::string ShowDW_EH_PE(uint8_t type) {
             ret += " + DW_EH_PE_aligned";
             break;
     }
+
+    if (type == 0xEE) {
+        ret = "0xEE (dummy value in sold)";
+    } else if (ret == "") {
+        ret = HexString(type, 2);
+    }
+
     return ret;
 }
 

@@ -145,8 +145,14 @@ static char* read_sleb128(char* p, int32_t* val) {
     return p;
 }
 
-static const unsigned char* read_encoded_value_with_base(unsigned char encoding, _Unwind_Ptr base, const unsigned char* p,
-                                                         _Unwind_Ptr* val) {
+typedef unsigned _Unwind_Ptr __attribute__((__mode__(__word__)));
+typedef unsigned _Unwind_Internal_Ptr __attribute__((__mode__(__pointer__)));
+typedef unsigned _Unwind_Word __attribute__((__mode__(__unwind_word__)));
+typedef signed _Unwind_Sword __attribute__((__mode__(__unwind_word__)));
+
+#define DW_EH_PE_indirect 0x80
+
+static char* read_encoded_value_with_base(unsigned char encoding, _Unwind_Ptr base, char* p, uint32_t* val) {
     union unaligned {
         void* ptr;
         unsigned u2 __attribute__((mode(HI)));
@@ -164,7 +170,7 @@ static const unsigned char* read_encoded_value_with_base(unsigned char encoding,
         _Unwind_Internal_Ptr a = (_Unwind_Internal_Ptr)p;
         a = (a + sizeof(void*) - 1) & -sizeof(void*);
         result = *(_Unwind_Internal_Ptr*)a;
-        p = (const unsigned char*)(a + sizeof(void*));
+        p = (char*)(a + sizeof(void*));
     } else {
         switch (encoding & 0x0f) {
             case DW_EH_PE_absptr:
@@ -173,13 +179,13 @@ static const unsigned char* read_encoded_value_with_base(unsigned char encoding,
                 break;
 
             case DW_EH_PE_uleb128: {
-                _Unwind_Word tmp;
+                uint32_t tmp;
                 p = read_uleb128(p, &tmp);
                 result = (_Unwind_Internal_Ptr)tmp;
             } break;
 
             case DW_EH_PE_sleb128: {
-                _Unwind_Sword tmp;
+                int32_t tmp;
                 p = read_sleb128(p, &tmp);
                 result = (_Unwind_Internal_Ptr)tmp;
             } break;
@@ -209,9 +215,9 @@ static const unsigned char* read_encoded_value_with_base(unsigned char encoding,
                 result = u->s8;
                 p += 8;
                 break;
-
             default:
-                __gxx_abort();
+                LOG(FATAL) << SOLD_LOG_8BITS(encoding & 0x0f);
+                // __gxx_abort();
         }
 
         if (result != 0) {
