@@ -1,16 +1,12 @@
 #! /bin/bash -eu
 
-g++ -fPIC -c -o lib.o lib.cc
-g++ -lpthread -Wl,--hash-style=gnu -shared -Wl,-soname,lib.so -o lib.so lib.o
-g++ -Wl,--hash-style=gnu -o main main.cc lib.so -lpthread
-
-mv lib.so lib.so.original
-../../build/sold -i lib.so.original -o lib.so.soldout --section-headers
+g++ -fPIC -shared hoge.cc -o libhoge.so
+g++ main.cc -o main libhoge.so
 
 # Use sold
-ln -sf lib.so.soldout lib.so
+# ln -sf lib.so.soldout lib.so
 
 # Use original
 # ln -sf lib.so.original lib.so
 
-./main
+# ./main

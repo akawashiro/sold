@@ -8,6 +8,38 @@
 #include <map>
 #include <memory>
 
+struct CIE {
+    uint32_t length;
+    int32_t CIE_id;
+    uint8_t version;
+    char* arg_str;
+    uint8_t FDE_encoding;
+};
+
+struct FDE {
+    uint32_t length;
+    uint64_t extended_length;
+    int32_t CIE_delta;
+    int32_t initial_loc;
+};
+
+struct EHFrameHeader {
+    struct FDETableEntry {
+        int32_t initial_loc;
+        int32_t fde_ptr;
+    };
+
+    uint8_t version;
+    uint8_t eh_frame_ptr_enc;
+    uint8_t fde_count_enc;
+    uint8_t table_enc;
+
+    int32_t eh_frame_ptr;
+    uint32_t fde_count;
+
+    std::vector<FDETableEntry> table;
+};
+
 class ELFBinary {
 public:
     ELFBinary(const std::string& filename, int fd, char* head, size_t size);
@@ -81,9 +113,8 @@ public:
 
 private:
     void ParsePhdrs();
-
+    void ParseEHFrameHeader(size_t off, size_t size);
     void ParseDynamic(size_t off, size_t size);
-
     void ParseFuncArray(uintptr_t* array, uintptr_t size, std::vector<uintptr_t>* out);
 
     const std::string filename_;
@@ -97,6 +128,8 @@ private:
     Elf_Phdr* tls_{nullptr};
     const char* strtab_{nullptr};
     Elf_Sym* symtab_{nullptr};
+
+    EHFrameHeader eh_frame_header_;
 
     std::vector<std::string> neededs_;
     // This is the name specified in the DT_SONAME field.

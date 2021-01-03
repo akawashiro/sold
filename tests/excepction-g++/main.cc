@@ -1,4 +1,4 @@
-#include "lib.h"
+#include "hoge.h"
 
 int main() {
     std::cout << "catch_exception" << std::endl;
