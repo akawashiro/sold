@@ -43,6 +43,8 @@
 #define ELF_R_TYPE(val) ELF64_R_TYPE(val)
 #define ELF_R_INFO(sym, type) ELF64_R_INFO(sym, type)
 
+#define DW_EH_PE_SOLD_DUMMY 0xee
+
 // Although there is no description of VERSYM_HIDDEN in glibc, you can find it
 // in binutils source code.
 // https://github.com/gittup/binutils/blob/8db2e9c8d085222ac7b57272ee263733ae193565/include/elf/common.h#L816

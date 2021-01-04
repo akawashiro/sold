@@ -94,8 +94,8 @@ std::string ShowDW_EH_PE(uint8_t type) {
             break;
     }
 
-    if (type == 0xEE) {
-        ret = "0xEE (dummy value in sold)";
+    if (type == DW_EH_PE_SOLD_DUMMY) {
+        ret = "DW_EH_PE_SOLD_DUMMY(0xEE)";
     } else if (ret == "") {
         ret = HexString(type, 2);
     }

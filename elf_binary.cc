@@ -328,25 +328,29 @@ void ELFBinary::ParseEHFrameHeader(size_t off, size_t size) {
         e.fde_ptr = *reinterpret_cast<int32_t*>(head_ + off + 12 + i * 8 + 4);
         eh_frame_header_.table.emplace_back(e);
 
+        LOG(INFO) << SOLD_LOG_32BITS(e.initial_loc) << SOLD_LOG_32BITS(e.fde_ptr) << SOLD_LOG_32BITS(off + e.fde_ptr)
+                  << SOLD_LOG_32BITS(AddrFromOffset(off)) << SOLD_LOG_32BITS(AddrFromOffset(off) + e.fde_ptr)
+                  << SOLD_LOG_32BITS(OffsetFromAddr(AddrFromOffset(off) + e.fde_ptr));
+
         FDE fde = {};
         CIE cie = {};
-        // 0xEE is not used in dwarf.h
-        cie.FDE_encoding = 0xEE;
-        cie.LSDA_encoding = 0xEE;
+        cie.FDE_encoding = DW_EH_PE_SOLD_DUMMY;
+        cie.LSDA_encoding = DW_EH_PE_SOLD_DUMMY;
 
+        char* fde_base = head_ + OffsetFromAddr(AddrFromOffset(off) + e.fde_ptr);
         int fde_offset = 0;
         int cie_offset = 0;
 
-        fde.length = *reinterpret_cast<uint32_t*>(head_ + off + e.fde_ptr + fde_offset);
+        fde.length = *reinterpret_cast<uint32_t*>(fde_base + fde_offset);
         fde_offset += sizeof(uint32_t);
         if (fde.length == 0xffffffff) {
-            fde.extended_length = *reinterpret_cast<uint64_t*>(head_ + off + e.fde_ptr + fde_offset);
+            fde.extended_length = *reinterpret_cast<uint64_t*>(fde_base + fde_offset);
             fde_offset += sizeof(uint64_t);
         }
-        fde.CIE_delta = *reinterpret_cast<int32_t*>(head_ + off + e.fde_ptr + fde_offset);
+        fde.CIE_delta = *reinterpret_cast<int32_t*>(fde_base + fde_offset);
         fde_offset += sizeof(int32_t);
 
-        char* cie_head = head_ + off + e.fde_ptr + 4 - fde.CIE_delta;
+        char* cie_head = head_ + OffsetFromAddr(AddrFromOffset(fde_base + 4 - head_) - fde.CIE_delta);
         uint32_t utmp;
         int32_t stmp;
 
@@ -400,7 +404,7 @@ void ELFBinary::ParseEHFrameHeader(size_t off, size_t size) {
             cie.FDE_encoding = DW_EH_PE_absptr;
         }
 
-        fde.initial_loc = *reinterpret_cast<int32_t*>(head_ + off + e.fde_ptr + fde_offset);
+        fde.initial_loc = *reinterpret_cast<int32_t*>(fde_base + fde_offset);
         fde_offset += sizeof(int32_t);
 
         LOG(INFO) << "ParseEHFrameHeader table[" << i << "] = {" << SOLD_LOG_32BITS(e.initial_loc) << SOLD_LOG_32BITS(e.fde_ptr)
@@ -410,7 +414,7 @@ void ELFBinary::ParseEHFrameHeader(size_t off, size_t size) {
                   << SOLD_LOG_DWEHPE(cie.FDE_encoding) << SOLD_LOG_DWEHPE(cie.LSDA_encoding) << "}";
         // 8 in (off + e.fde_ptr + 8 + fde.initial_loc) is for the offset of fde.initial_loc
         CHECK(cie.FDE_encoding == (DW_EH_PE_sdata4 | DW_EH_PE_pcrel));
-        CHECK(cie.LSDA_encoding == (DW_EH_PE_sdata4 | DW_EH_PE_pcrel) || cie.LSDA_encoding == 0xEE);
+        CHECK(cie.LSDA_encoding == (DW_EH_PE_sdata4 | DW_EH_PE_pcrel) || cie.LSDA_encoding == DW_EH_PE_SOLD_DUMMY);
 
         eh_frame_header_.fdes.emplace_back(fde);
         eh_frame_header_.cies.emplace_back(cie);
