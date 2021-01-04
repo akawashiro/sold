@@ -106,13 +106,16 @@ bool is_special_ver_ndx(Elf64_Versym v);
 std::string special_ver_ndx_to_str(Elf_Versym v);
 
 template <class T>
-inline std::string HexString(T num, int length = 16) {
+inline std::string HexString(T num, int length = -1) {
+    if (length == -1) {
+        length = sizeof(T) * 2;
+    }
     std::stringstream ss;
     ss << "0x" << std::uppercase << std::setfill('0') << std::setw(length) << std::hex << +num;
     return ss.str();
 }
 
-static char* read_uleb128(char* p, uint32_t* val) {
+static const char* read_uleb128(const char* p, uint32_t* val) {
     unsigned int shift = 0;
     unsigned char byte;
     uint32_t result;
@@ -128,7 +131,7 @@ static char* read_uleb128(char* p, uint32_t* val) {
     return p;
 }
 
-static char* read_sleb128(char* p, int32_t* val) {
+static const char* read_sleb128(const char* p, int32_t* val) {
     unsigned int shift = 0;
     unsigned char byte;
     int32_t result;
@@ -154,7 +157,7 @@ typedef signed _Unwind_Sword __attribute__((__mode__(__unwind_word__)));
 
 #define DW_EH_PE_indirect 0x80
 
-static char* read_encoded_value_with_base(unsigned char encoding, _Unwind_Ptr base, char* p, uint32_t* val) {
+static const char* read_encoded_value_with_base(unsigned char encoding, _Unwind_Ptr base, const char* p, uint32_t* val) {
     union unaligned {
         void* ptr;
         unsigned u2 __attribute__((mode(HI)));

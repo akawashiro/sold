@@ -12,7 +12,7 @@ struct CIE {
     uint32_t length;
     int32_t CIE_id;
     uint8_t version;
-    char* arg_str;
+    const char* aug_str;
     uint8_t FDE_encoding;
     uint8_t LSDA_encoding;
 };
