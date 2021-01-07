@@ -572,6 +572,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
             break;
         }
 
+        case R_X86_64_TPOFF64:
         case R_X86_64_DTPOFF64: {
             const std::string name = bin->Str(sym->st_name);
             uintptr_t index = syms_.ResolveCopy(name, soname, version_name);
