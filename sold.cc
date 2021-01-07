@@ -443,7 +443,8 @@ void Sold::CopyPublicSymbols() {
 // because we decided locations of shared objects in DecideOffsets.
 void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t offset) {
     const Elf_Sym* sym = &bin->symtab()[ELF_R_SYM(rel->r_info)];
-    auto [soname, version_name] = bin->GetVersion(ELF_R_SYM(rel->r_info), filename_to_soname_);
+    std::string soname, version_name;
+    std::tie(soname, version_name) = bin->GetVersion(ELF_R_SYM(rel->r_info), filename_to_soname_);
 
     int type = ELF_R_TYPE(rel->r_info);
     const uintptr_t addend = rel->r_addend;
