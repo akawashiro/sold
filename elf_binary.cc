@@ -300,6 +300,8 @@ void ELFBinary::ParsePhdrs() {
             ParseEHFrameHeader(phdr->p_offset, phdr->p_filesz);
         } else if (phdr->p_type == PT_GNU_STACK) {
             gnu_stack_ = phdr;
+        } else if (phdr->p_type == PT_GNU_RELRO) {
+            gnu_relro_ = phdr;
         }
     }
     CHECK(!phdrs_.empty());

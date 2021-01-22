@@ -10,6 +10,7 @@
 #include "elf_binary.h"
 #include "hash.h"
 #include "ldsoconf.h"
+#include "memprotect_builder.h"
 #include "shdr_builder.h"
 #include "strtab_builder.h"
 #include "symtab_builder.h"
@@ -38,6 +39,9 @@ private:
         num_phdrs += 2;
         // GNU_STACK
         num_phdrs++;
+        // GNU_RELRO
+        num_phdrs++;
+        // Normal PT_LOAD
         for (ELFBinary* bin : link_binaries_) {
             num_phdrs += bin->loads().size();
         }
@@ -119,7 +123,21 @@ private:
         s += n_fdes * (sizeof(EHFrameHeader::FDETableEntry::fde_ptr) + sizeof(EHFrameHeader::FDETableEntry::initial_loc));
         return s;
     }
-    uintptr_t ShdrOffset() const { return EHFrameOffset() + EHFrameSize(); }
+
+    uintptr_t MemprotectOffset() const { return EHFrameOffset() + EHFrameSize(); }
+    uintptr_t MemprotectSize() const {
+        int n_memprotect = 0;
+        for (ELFBinary* bin : link_binaries_) {
+            for (Elf_Phdr* phdr : bin->phdrs()) {
+                if (phdr->p_type == PT_GNU_RELRO) {
+                    n_memprotect++;
+                }
+            }
+        }
+        return sizeof(MemprotectBuilder::memprotect_start_code) + sizeof(MemprotectBuilder::memprotect_body_code) * n_memprotect +
+               sizeof(MemprotectBuilder::memprotect_end_code);
+    }
+    uintptr_t ShdrOffset() const { return MemprotectOffset() + MemprotectSize(); }
 
     void BuildEhdr();
 
@@ -138,6 +156,15 @@ private:
             }
         }
         SOLD_CHECK_EQ(EHFrameSize(), ehframe_builder_.Size());
+    }
+
+    void BuildMemprotect() {
+        for (const ELFBinary* bin : link_binaries_) {
+            const Elf_Phdr* r = bin->gnu_relro();
+            if (r) {
+                memprotect_builder_.Add(r->p_offset, r->p_memsz);
+            }
+        }
     }
 
     void MakeDyn(uint64_t tag, uintptr_t ptr) {
@@ -238,6 +265,12 @@ private:
         CHECK(ftell(fp) == EHFrameOffset());
         LOG(INFO) << SOLD_LOG_BITS(ftell(fp)) << SOLD_LOG_BITS(EHFrameOffset()) << SOLD_LOG_BITS(ehframe_builder_.Size());
         ehframe_builder_.Emit(fp);
+    }
+
+    void EmitMemprotect(FILE* fp) {
+        CHECK(ftell(fp) == MemprotectOffset());
+        LOG(INFO) << SOLD_LOG_BITS(ftell(fp)) << SOLD_LOG_BITS(MemprotectOffset()) << SOLD_LOG_BITS(MemprotectSize());
+        memprotect_builder_.Emit(fp);
     }
 
     void EmitShdr(FILE* fp) {
@@ -357,8 +390,10 @@ private:
     std::map<std::string, std::string> soname_to_filename_;
     uintptr_t tls_file_offset_{0};
     uintptr_t ehframe_file_offset_{0};
+    uintptr_t memprotect_file_offset_{0};
     uintptr_t tls_offset_{0};
     uintptr_t ehframe_offset_{0};
+    uintptr_t memprotect_offset_{0};
     bool is_executable_{false};
     bool emit_section_header_;
 
@@ -368,6 +403,7 @@ private:
     StrtabBuilder strtab_;
     VersionBuilder version_;
     EHFrameBuilder ehframe_builder_;
+    MemprotectBuilder memprotect_builder_;
     ShdrBuilder shdr_;
     Elf_Ehdr ehdr_;
     std::vector<Load> loads_;
