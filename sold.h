@@ -162,7 +162,7 @@ private:
         for (const ELFBinary* bin : link_binaries_) {
             const Elf_Phdr* r = bin->gnu_relro();
             if (r) {
-                memprotect_builder_.Add(r->p_offset + offsets_[bin], r->p_memsz);
+                memprotect_builder_.Add(r->p_vaddr + offsets_[bin], r->p_memsz);
             }
         }
     }

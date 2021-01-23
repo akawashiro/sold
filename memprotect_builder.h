@@ -24,12 +24,13 @@ public:
 
             memcpy(mprotect_code_head, memprotect_body_code, sizeof(memprotect_body_code));
             int32_t* offset_p = (int32_t*)(mprotect_code_head + memprotect_body_addr_offset);
-            int32_t offset_v =
-                offsets[i] - (static_cast<int32_t>(mprotect_code_offset) + static_cast<int32_t>(mprotect_code_head - mprotect_code));
+            // 7 is the length of `lea 0xabbccdd(%rip), %rdi'
+            int32_t offset_v = (offsets[i] & (~(0x1000 - 1))) -
+                               (static_cast<int32_t>(mprotect_code_offset) + static_cast<int32_t>(mprotect_code_head - mprotect_code) + 7);
             LOG(INFO) << "MemprotectBuilder::Emit" << SOLD_LOG_BITS(offset_v) << SOLD_LOG_KEY(offset_v);
             *offset_p = offset_v;
             uint32_t* size_p = (uint32_t*)(mprotect_code_head + memprotect_body_size_offset);
-            *size_p = sizes[i];
+            *size_p = ((offsets[i] + sizes[i]) & (~(0x1000 - 1))) - (offsets[i] & (~(0x1000 - 1)));
             mprotect_code_head += sizeof(memprotect_body_code);
         }
         memcpy(mprotect_code_head, memprotect_end_code, sizeof(memprotect_end_code));
