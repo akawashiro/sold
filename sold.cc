@@ -292,7 +292,7 @@ void Sold::EmitPhdrs(FILE* fp) {
         phdr.p_memsz = MemprotectSize();
         phdr.p_align = 0x1000;
         phdr.p_type = PT_LOAD;
-        phdr.p_flags = PF_R | PF_X;
+        phdr.p_flags = PF_R | PF_W | PF_X;
         phdrs.push_back(phdr);
     }
     {
@@ -404,8 +404,6 @@ void Sold::CollectTLS() {
 
 // Collect .init_array and .fini_array
 void Sold::CollectArrays() {
-    // TODO(akawashiro) RESUME FROM HERE
-    // init_array_.push_back(memprotect_offset_);
     for (auto iter = link_binaries_.rbegin(); iter != link_binaries_.rend(); ++iter) {
         ELFBinary* bin = *iter;
         uintptr_t offset = offsets_[bin];
@@ -413,6 +411,9 @@ void Sold::CollectArrays() {
             init_array_.push_back(ptr + offset);
         }
     }
+    // TODO(akawashiro) In case of executables, this code causes SEGV. I don't
+    // kwow the reason.
+    if (!is_executable_) init_array_.push_back(memprotect_offset_);
     for (ELFBinary* bin : link_binaries_) {
         uintptr_t offset = offsets_[bin];
         for (uintptr_t ptr : bin->fini_array()) {

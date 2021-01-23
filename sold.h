@@ -124,7 +124,7 @@ private:
         return s;
     }
 
-    uintptr_t MemprotectOffset() const { return EHFrameOffset() + EHFrameSize(); }
+    uintptr_t MemprotectOffset() const { return memprotect_file_offset_; }
     uintptr_t MemprotectSize() const {
         int n_memprotect = 0;
         for (ELFBinary* bin : link_binaries_) {
@@ -162,7 +162,7 @@ private:
         for (const ELFBinary* bin : link_binaries_) {
             const Elf_Phdr* r = bin->gnu_relro();
             if (r) {
-                memprotect_builder_.Add(r->p_offset, r->p_memsz);
+                memprotect_builder_.Add(r->p_offset + offsets_[bin], r->p_memsz);
             }
         }
     }
@@ -268,9 +268,10 @@ private:
     }
 
     void EmitMemprotect(FILE* fp) {
-        CHECK(ftell(fp) == MemprotectOffset());
+        EmitPad(fp, MemprotectOffset());
+        SOLD_CHECK_EQ(ftell(fp), MemprotectOffset());
         LOG(INFO) << SOLD_LOG_BITS(ftell(fp)) << SOLD_LOG_BITS(MemprotectOffset()) << SOLD_LOG_BITS(MemprotectSize());
-        memprotect_builder_.Emit(fp);
+        memprotect_builder_.Emit(fp, memprotect_offset_);
     }
 
     void EmitShdr(FILE* fp) {
