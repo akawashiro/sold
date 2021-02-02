@@ -672,6 +672,15 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
             break;
         }
 
+        case R_X86_64_TPOFF64: {
+            const std::string name = bin->Str(sym->st_name);
+            uintptr_t index = syms_.ResolveCopy(name, soname, version_name);
+            newrel.r_info = ELF_R_INFO(index, type);
+            LOG(INFO) << "R_X86_64_TPOFF64 relocation: " << SOLD_LOG_KEY(*rel) << SOLD_LOG_KEY(newrel)
+                      << SOLD_LOG_64BITS(bin->OffsetFromAddr(rel->r_offset));
+            break;
+        }
+
         case R_X86_64_COPY: {
             const std::string name = bin->Str(sym->st_name);
             uintptr_t index = syms_.ResolveCopy(name, soname, version_name);
