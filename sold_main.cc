@@ -82,4 +82,5 @@ int main(int argc, char* const argv[]) {
 
     Sold sold(input_file, exclude_sos, emit_section_header);
     sold.Link(output_file);
+    return 0;
 }
