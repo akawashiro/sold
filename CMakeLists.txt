@@ -85,4 +85,11 @@ if(BUILD_TESTING)
             COMMAND ${CMAKE_CURRENT_BINARY_DIR}/tests/test_${t}_out
             )
     endforeach()
+
+add_subdirectory(third_party/pybind11)
+pybind11_add_module(pybind_test MODULE pybind_test.cc)
+add_custom_target(pybind_test.so ALL
+            COMMAND "${CMAKE_CURRENT_BINARY_DIR}/sold" "${CMAKE_CURRENT_BINARY_DIR}/pybind_test.cpython-38-x86_64-linux-gnu.so" -o "${CMAKE_CURRENT_BINARY_DIR}/pybind_test.so" --section-headers && mv "${CMAKE_CURRENT_BINARY_DIR}/pybind_test.so" "${CMAKE_CURRENT_BINARY_DIR}/pybind_test.cpython-38-x86_64-linux-gnu.so"
+            DEPENDS sold
+            )
 endif()
