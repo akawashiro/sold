@@ -210,10 +210,19 @@ void SymtabBuilder::MergePublicSymbols(StrtabBuilder& strtab, VersionBuilder& ve
         sym->st_shndx = 1;
 
         Syminfo s{p.name, p.soname, p.version, p.versym, sym};
-        exposed_syms_.push_back(s);
-        symtab_.push_back(*sym);
+        if (std::count_if(exposed_syms_.begin(), exposed_syms_.end(), [&s](const Syminfo& t) { return s.name == t.name; }) == 0) {
+            exposed_syms_.push_back(s);
+            symtab_.push_back(*sym);
 
-        version.Add(s.versym, s.soname, s.version, strtab, sym->st_info);
+            version.Add(s.versym, s.soname, s.version, strtab, sym->st_info);
+        }
+
+        // {
+        //     exposed_syms_.push_back(s);
+        //     symtab_.push_back(*sym);
+        //
+        //     version.Add(s.versym, s.soname, s.version, strtab, sym->st_info);
+        // }
     }
     public_syms_.clear();
 }
