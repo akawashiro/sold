@@ -90,7 +90,10 @@ int main(int argc, char* const argv[]) {
     sold.Link(output_file);
 
     if (check_output) {
+        std::string dummy = output_file + ".dummy-for-check-output";
         Sold check(output_file, exclude_sos, emit_section_header);
+        check.Link(dummy);
+        std::remove(dummy.c_str());
     }
     return 0;
 }

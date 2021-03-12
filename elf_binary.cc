@@ -151,6 +151,8 @@ void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename
     for (int idx : CollectSymbolsFromReloc(rel_, num_rels_)) indices.insert(idx);
     for (int idx : CollectSymbolsFromReloc(plt_rel_, num_plt_rels_)) indices.insert(idx);
 
+    std::set<std::tuple<std::string, std::string, std::string>> duplicate_check;
+
     for (int idx : indices) {
         Elf_Sym* sym = &symtab_[idx];
         if (sym->st_name == 0) continue;
@@ -160,10 +162,14 @@ void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename
         LOG(INFO) << symname << "@" << name() << " index in .dynsym = " << idx;
 
         // Get version information coresspoinds to idx
-        auto p = GetVersion(idx, filename_to_soname);
+        std::string soname, version;
+        std::tie(soname, version) = GetVersion(idx, filename_to_soname);
         Elf_Versym v = versym_ ? versym_[idx] : NO_VERSION_INFO;
 
-        syms_.push_back(Syminfo{symname, p.first, p.second, v, sym});
+        syms_.push_back(Syminfo{symname, soname, version, v, sym});
+        CHECK(duplicate_check.insert({symname, soname, version}).second)
+            << SOLD_LOG_KEY(symname) << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
+        LOG(INFO) << "duplicate_check: " << SOLD_LOG_KEY(symname) << SOLD_LOG_KEY(version);
     }
 
     LOG(INFO) << "nsyms_ = " << nsyms_;
