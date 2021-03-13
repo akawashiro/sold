@@ -7,6 +7,7 @@ int main() {
     printf("j = %d\n", thread_local_j);
     // normal_k = 7;
     // printf("k = %d\n", normal_k);
+    printf("&normal_l = %p\n", &normal_l);
     normal_l = 9;
     printf("l = %d\n", normal_l);
     return 0;

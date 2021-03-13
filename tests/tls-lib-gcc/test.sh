@@ -11,6 +11,6 @@ LD_LIBRARY_PATH=answer ./main-answer
 
 # With sold
 echo ----- with sold -----
-GLOG_log_dir=. LD_LIBRARY_PATH=original ../../build/sold original/lib.so -o sold_out/lib.so --section-headers --check-output
+GLOG_log_dir=. LD_LIBRARY_PATH=original ../../build/sold original/lib.so -o sold_out/lib.so --section-headers
 LD_LIBRARY_PATH=sold_out gcc -o main-soldout main.c sold_out/lib.so
 LD_LIBRARY_PATH=sold_out ./main-soldout
