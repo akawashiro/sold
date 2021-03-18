@@ -7,9 +7,4 @@ struct Interface {
 
 struct InterfaceArgs {};
 
-static Registry<std::string, std::unique_ptr<Interface>, InterfaceArgs>* RegistryX() {
-    std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-    static Registry<std::string, std::unique_ptr<Interface>, InterfaceArgs>* registry =
-        new Registry<std::string, std::unique_ptr<Interface>, InterfaceArgs>();
-    return registry;
-}
+Registry<std::string, std::unique_ptr<Interface>, InterfaceArgs>* RegistryX();

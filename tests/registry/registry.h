@@ -33,6 +33,7 @@ public:
     Registry(bool warning = true) : registry_(), priority_(), terminate_(true), warning_(warning) {}
 
     void Register(const SrcType& key, Creator creator, const RegistryPriority priority = REGISTRY_DEFAULT) {
+        std::cerr << __FILE__ << ":" << __LINE__ << " in Register key = " << key << std::endl;
         std::lock_guard<std::mutex> lock(register_mutex_);
         // The if statement below is essentially the same as the following line:
         // CHECK_EQ(registry_.count(key), 0) << "Key " << key
@@ -68,6 +69,7 @@ public:
     }
 
     void Register(const SrcType& key, Creator creator, const std::string& help_msg, const RegistryPriority priority = REGISTRY_DEFAULT) {
+        std::cerr << __FILE__ << ":" << __LINE__ << " in Register key = " << key << std::endl;
         Register(key, creator, priority);
         help_message_[key] = help_msg;
     }
@@ -75,20 +77,11 @@ public:
     inline bool Has(const SrcType& key) { return (registry_.count(key) != 0); }
 
     ObjectPtrType Create(const SrcType& key, Args... args) {
+        std::cerr << __FILE__ << ":" << __LINE__ << " key = " << key << std::endl;
         if (registry_.count(key) == 0) {
             // Returns nullptr if the key is not registered.
             return nullptr;
         }
-        std::cerr << __FILE__ << ":" << __LINE__ << " typeid(registry_[key]).name() = " << typeid(registry_[key]).name() << std::endl;
-        std::cerr << __FILE__ << ":" << __LINE__ << " typeid(registry_[key](args...)).name() = " << typeid(registry_[key](args...)).name()
-                  << std::endl;
-        std::cerr << __FILE__ << ":" << __LINE__
-                  << " typeid(registry_[key](args...).get()).name() = " << typeid(registry_[key](args...).get()).name() << std::endl;
-        // Crash at the following line
-        std::cerr << __FILE__ << ":" << __LINE__
-                  << " typeid(*(registry_[key](args...).get())).name() = " << typeid(*(registry_[key](args...).get())).name() << std::endl;
-        auto p = registry_[key](args...).get();
-        std::cerr << __FILE__ << ":" << __LINE__ << " typeid(*p).name() = " << typeid(*p).name() << std::endl;
         return registry_[key](args...);
     }
 
