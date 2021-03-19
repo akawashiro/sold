@@ -79,6 +79,7 @@ public:
     ObjectPtrType Create(const SrcType& key, Args... args) {
         std::cerr << __FILE__ << ":" << __LINE__ << " key = " << key << std::endl;
         if (registry_.count(key) == 0) {
+            std::cerr << __FILE__ << ":" << __LINE__ << " key = " << key << " has no entry " << std::endl;
             // Returns nullptr if the key is not registered.
             return nullptr;
         }
