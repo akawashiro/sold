@@ -1,6 +1,10 @@
 #include "interface.h"
 
+extern int dummy;
+
 void hoge() {
+    dummy = 0;
+
     std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     auto r = RegistryX();
     std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
