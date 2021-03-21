@@ -86,3 +86,7 @@ if(BUILD_TESTING)
             )
     endforeach()
 endif()
+
+if(SOLD_LIBTORCH_TEST)
+    add_subdirectory(libtorch-test)
+endif()
