@@ -602,6 +602,8 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
 
             uint64_t* mod_on_got =
                 const_cast<uint64_t*>(reinterpret_cast<const uint64_t*>(bin->head() + bin->OffsetFromAddr(rel->r_offset)));
+            CHECK(*mod_on_got == 0) << SOLD_LOG_BITS(*mod_on_got) << SOLD_LOG_BITS(rel->r_offset)
+                                    << SOLD_LOG_BITS(bin->OffsetFromAddr(rel->r_offset)) << ": Too big for initial mod_on_got.";
             uint64_t* offset_on_got = mod_on_got + 1;
             const bool is_bss = bin->InTLSBSS(*offset_on_got);
 
@@ -618,7 +620,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
             // rewritten by R_X86_64_DTPMOD64 and R_X86_64_DTPOFF64,
             // respectively.
             //
-            // In TLS local dynamic model, the only ti_module is rewrite by
+            // In TLS local dynamic model, the only ti_module is rewritten by
             // R_X86_64_DTPMOD64 and ti_offset is fixed in the link process. We
             // must rewrite the fixed ti_offset because we remap the TLS
             // template.
