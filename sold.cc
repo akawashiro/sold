@@ -541,16 +541,21 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
     const uintptr_t addend = rel->r_addend;
     Elf_Rel newrel = *rel;
     if (bin->InTLS(rel->r_offset)) {
+        LOG(INFO) << "InTLS";
         const Elf_Phdr* tls = bin->tls();
         CHECK(tls);
         uintptr_t off = newrel.r_offset - tls->p_vaddr;
         off = RemapTLS("reloc", bin, off);
         newrel.r_offset = off + tls_offset_;
+        // TODO(akirakawata) R_X86_64_DTPMOD64 in the following line do something wrong.
+        LOG(INFO) << SOLD_LOG_KEY(ShowRelocationType(type)) << SOLD_LOG_KEY(bin->filename());
     } else {
+        LOG(INFO) << "NOT InTLS";
         newrel.r_offset += offset;
     }
 
-    LOG(INFO) << "Relocate " << bin->Str(sym->st_name) << " at " << rel->r_offset;
+    LOG(INFO) << "Relocate " << bin->Str(sym->st_name) << " at " << rel->r_offset << SOLD_LOG_KEY(ShowRelocationType(type))
+              << SOLD_LOG_KEY(bin->InTLS(rel->r_offset)) << SOLD_LOG_KEY(bin->filename());
 
     // Even if we found a defined symbol in src_syms_, we cannot
     // erase the relocation entry. The address needs to be fixed at
@@ -602,8 +607,12 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
 
             uint64_t* mod_on_got =
                 const_cast<uint64_t*>(reinterpret_cast<const uint64_t*>(bin->head() + bin->OffsetFromAddr(rel->r_offset)));
+            LOG(INFO) << SOLD_LOG_BITS(*mod_on_got) << SOLD_LOG_BITS(rel->r_offset) << SOLD_LOG_BITS(bin->OffsetFromAddr(rel->r_offset))
+                      << SOLD_LOG_KEY(bin->filename());
             CHECK(*mod_on_got == 0) << SOLD_LOG_BITS(*mod_on_got) << SOLD_LOG_BITS(rel->r_offset)
-                                    << SOLD_LOG_BITS(bin->OffsetFromAddr(rel->r_offset)) << ": Too big for initial mod_on_got.";
+                                    << SOLD_LOG_BITS(bin->OffsetFromAddr(rel->r_offset)) << SOLD_LOG_KEY(bin->filename())
+                                    << ": *mod_on_got is non-zero. This value should be zero because R_X86_64_DTPMOD64 relocation rewrites "
+                                       "over it in the load process.";
             uint64_t* offset_on_got = mod_on_got + 1;
             const bool is_bss = bin->InTLSBSS(*offset_on_got);
 

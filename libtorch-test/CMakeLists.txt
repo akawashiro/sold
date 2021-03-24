@@ -11,8 +11,14 @@ endif()
 find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
+# Delete a symlink made by the user
+add_custom_target(remove_torch_test
+    COMMAND rm -f libtorch_test.so
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
 add_library(torch_test SHARED torch_test.cc)
 target_link_libraries(torch_test PRIVATE "${TORCH_LIBRARIES}")
+add_dependencies(torch_test remove_torch_test)
 
 add_custom_target(torch_test_original ALL
     COMMAND mv libtorch_test.so libtorch_test.so.original 

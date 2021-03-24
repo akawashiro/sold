@@ -414,6 +414,7 @@ private:
         "libltdl.so",      // LGPL (libtool)
         "libcuda.so",      // NVIDIA Software License Agreement and CUDA Supplement to Software License Agreement (CUDA)
         "libopenblas.so",  // BSD (OpenBLAS) TODO(akawashiro) Including libopenblas.so causes SEGV.
+        // "libnccl.so",     "libcudart.so", "libcusparse.so", "libcurand.so", "libcusolver.so", "libnvToolsExt.so", "libcufft.so",
     };
 
     std::unique_ptr<ELFBinary> main_binary_;
