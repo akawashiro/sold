@@ -792,6 +792,7 @@ std::vector<ELFBinary*> ConservativeTopologicalSort(std::vector<std::pair<std::s
 
     std::vector<ELFBinary*> res;
     for (auto it = reversed_res.rbegin(); it != reversed_res.rend(); it++) {
+        LOG(INFO) << SOLD_LOG_KEY(std::get<0>(buf[*it])) << "ConservativeTopologicalSort";
         res.emplace_back(std::get<1>(buf[*it]));
     }
 
@@ -894,7 +895,8 @@ void Sold::ResolveLibraryPaths(ELFBinary* root_binary) {
         }
     }
 
-    link_binaries_ = TopologicalSort(link_binaries_buf);
+    // link_binaries_ = TopologicalSort(link_binaries_buf);
+    link_binaries_ = ConservativeTopologicalSort(link_binaries_buf);
 }
 
 bool Sold::ShouldLink(const std::string& soname) {
