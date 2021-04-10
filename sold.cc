@@ -744,6 +744,62 @@ std::vector<std::string> Sold::GetLibraryPaths(const ELFBinary* binary) {
     return library_paths;
 }
 
+std::vector<ELFBinary*> ConservativeTopologicalSort(std::vector<std::pair<std::string, ELFBinary*>> link_binaries_buf) {
+    if (link_binaries_buf.size() < 1) {
+        return {};
+    }
+
+    // The third element of tuple is the index in the original array.
+    // We use it to make the result as conservative as possible.
+    std::vector<std::tuple<std::string, ELFBinary*, int>> buf;
+    for (const auto& p : link_binaries_buf) buf.emplace_back(p.first, p.second, buf.size());
+
+    int N = buf.size();
+    std::vector<std::vector<int>> Graph(N);
+    std::vector<int> n_incoming(N, 0);
+
+    for (int i = 0; i < N; i++) {
+        const auto& neededs = std::get<1>(buf[i])->neededs();
+        for (int j = 0; j < N; j++) {
+            if (i == j) continue;
+            if (std::find(neededs.begin(), neededs.end(), std::get<0>(buf[j])) != neededs.end()) {
+                Graph[j].emplace_back(i);
+                n_incoming[i]++;
+            }
+        }
+    }
+
+    std::priority_queue<int> queue;
+    for (int i = 0; i < N; i++) {
+        if (n_incoming[i] == 0) {
+            queue.push(i);
+        }
+    }
+
+    std::vector<int> reversed_res;
+    while (!queue.empty()) {
+        int t = queue.top();
+        queue.pop();
+
+        reversed_res.emplace_back(t);
+        for (const int i : Graph[t]) {
+            --n_incoming[i];
+            if (n_incoming[i] == 0) {
+                queue.push(i);
+            }
+        }
+    }
+
+    std::vector<ELFBinary*> res;
+    for (auto it = reversed_res.rbegin(); it != reversed_res.rend(); it++) {
+        res.emplace_back(std::get<1>(buf[*it]));
+    }
+
+    return res;
+}
+
+// Returns a sequence of ELFBinary* in a reverse order.
+// We must call .init_array of ELFBinaries in the reverse order.
 // This implementation is compatible with _dl_sort_maps in glibc/elf/dl-sort-maps.c.
 std::vector<ELFBinary*> TopologicalSort(std::vector<std::pair<std::string, ELFBinary*>> link_binaries_buf) {
     if (link_binaries_buf.size() < 1) {
