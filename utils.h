@@ -148,6 +148,7 @@ struct Range {
     uintptr_t end;
     ptrdiff_t size() const { return end - start; }
     Range operator+(uintptr_t offset) const { return Range{start + offset, end + offset}; }
+    Range operator-(uintptr_t offset) const { return Range{start - offset, end - offset}; }
 };
 
 bool IsTLS(const Elf_Sym& sym);
