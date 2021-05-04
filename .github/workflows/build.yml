@@ -17,5 +17,3 @@ jobs:
       run: cmake --build build
     - name: Test
       run: cd build && ctest --output-on-failure
-    - name: run-all-tests
-      run: cd tests && ./run-all-tests.sh
