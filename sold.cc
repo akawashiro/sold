@@ -743,6 +743,7 @@ std::vector<std::string> Sold::GetLibraryPaths(const ELFBinary* binary) {
 
     library_paths.push_back("/lib");
     library_paths.push_back("/usr/lib");
+    library_paths.push_back("/usr/lib64");
 
     return library_paths;
 }
