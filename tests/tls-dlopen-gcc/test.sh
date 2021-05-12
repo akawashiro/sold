@@ -1,8 +1,7 @@
 #! /bin/bash -eu
 
-gcc -fPIC -c -o lib.o lib.c
-gcc -Wl,--hash-style=gnu -shared -Wl,-soname,lib.so -o lib.so lib.o
-gcc -Wl,--hash-style=gnu -o main main.c -ldl 
+gcc -fPIC -shared -Wl,-soname,lib.so -o lib.so lib.c
+gcc -pie -fPIE -o main main.c -ldl 
 
 mv lib.so lib.so.original
 ../../build/sold -i lib.so.original -o lib.so.soldout --section-headers --check-output

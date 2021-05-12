@@ -1,8 +1,7 @@
 #! /bin/bash -eu
 
-g++ -fPIC -c -o lib.o lib.cc
-g++ -lpthread -Wl,--hash-style=gnu -shared -Wl,-soname,lib.so -o lib.so lib.o
-g++ -Wl,--hash-style=gnu -o main.out main.cc lib.so -lpthread
+g++ -lpthread -shared -Wl,-soname,lib.so -o lib.so lib.cc
+g++ -pie -fPIE -o main.out main.cc lib.so -lpthread
 
 mv lib.so lib.so.original
 ../../build/sold -i lib.so.original -o lib.so.soldout --section-headers --check-output
