@@ -1,0 +1,21 @@
+name: fedora
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: fedora-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install requirements
+      run: dnf install -y ninja-build cmake gcc g++ git libstdc++ python3 python3-devel python3-pip
+    - name: Install Python packages
+      run: pip install pytest numpy
+    - name: CMake
+      run: mkdir build && cd build && cmake -GNinja -DSOLD_PYBIND_TEST=ON ..
+    - name: Build
+      run: cmake --build build
+    - name: Test
+      run: cd build && ctest --output-on-failure
