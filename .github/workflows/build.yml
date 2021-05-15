@@ -12,9 +12,9 @@ jobs:
     - name: Install requirements
       run: sudo apt install ninja-build
     - name: Install Python packages
-      run: pip install pytest numpy
+      run: pip3 install pytest numpy torch==1.8.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
     - name: CMake
-      run: mkdir build && cd build && cmake -GNinja -DSOLD_PYBIND_TEST=ON ..
+      run: mkdir build && cd build && cmake -GNinja -DTorch_DIR=$(python3 -c "import site; print (site.getsitepackages()[0])")/torch/share/cmake/Torch -DSOLD_PYBIND_TEST=ON -DSOLD_LIBTORCH_TEST=ON ..
     - name: Build
       run: cmake --build build
     - name: Test

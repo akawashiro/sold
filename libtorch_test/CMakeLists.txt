@@ -40,4 +40,6 @@ add_executable(torch_test_main_dlopen torch_test_main_dlopen.cc)
 target_link_libraries(torch_test_main_dlopen PRIVATE -ldl)
 
 add_test(NAME libtorch_test WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}" COMMAND ./torch_test_main)
+set_tests_properties(libtorch_test PROPERTIES ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_CURRENT_BINARY_DIR}")
 add_test(NAME libtorch_test_dlopen WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}" COMMAND ./torch_test_main_dlopen)
+set_tests_properties(libtorch_test_dlopen PROPERTIES ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_CURRENT_BINARY_DIR}")
