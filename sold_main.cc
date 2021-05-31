@@ -24,6 +24,7 @@ Options:
 -o, --output-file OUTPUT_FILE   Specify the ELF file to output (this option is mandatory)
 -i, --input-file INPUT_FILE     Specify the ELF file to output
 -e, --exclude-so EXCLUDE_FILE   Specify the ELF file to exclude (e.g. libmax.so) 
+-L, --custom-library-path PATH  Use PATH instead of the default path such as /usr/lib
 --section-headers               Emit section headers
 --check-output                  Check the output using sold itself
 --exclude-from-fini             Do not use .fini_array of the ELF file
@@ -40,6 +41,7 @@ int main(int argc, char* const argv[]) {
         {"input-file", required_argument, nullptr, 'i'},
         {"output-file", required_argument, nullptr, 'o'},
         {"exclude-so", required_argument, nullptr, 'e'},
+        {"custom-library-path", required_argument, nullptr, 'L'},
         {"section-headers", no_argument, nullptr, 1},
         {"check-output", no_argument, nullptr, 2},
         {"exclude-from-fini", required_argument, nullptr, 3},
@@ -50,6 +52,7 @@ int main(int argc, char* const argv[]) {
     std::string output_file;
     std::vector<std::string> exclude_sos;
     std::vector<std::string> exclude_finis;
+    std::vector<std::string> custome_library_path;
     bool emit_section_header = false;
     bool check_output = false;
 
@@ -67,6 +70,9 @@ int main(int argc, char* const argv[]) {
                 break;
             case 'e':
                 exclude_sos.push_back(optarg);
+                break;
+            case 'L':
+                custome_library_path.emplace_back(optarg);
                 break;
             case 'i':
                 input_file = optarg;
@@ -92,12 +98,12 @@ int main(int argc, char* const argv[]) {
         return 1;
     }
 
-    Sold sold(input_file, exclude_sos, exclude_finis, emit_section_header);
+    Sold sold(input_file, exclude_sos, exclude_finis, custome_library_path, emit_section_header);
     sold.Link(output_file);
 
     if (check_output) {
         std::string dummy = output_file + ".dummy-for-check-output";
-        Sold check(output_file, exclude_sos, exclude_finis, emit_section_header);
+        Sold check(output_file, exclude_sos, exclude_finis, custome_library_path, emit_section_header);
         check.Link(dummy);
         std::remove(dummy.c_str());
     }

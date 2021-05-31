@@ -21,10 +21,14 @@
 #include <set>
 
 Sold::Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_finis,
-           bool emit_section_header)
-    : exclude_sos_(exclude_sos), exclude_finis_(exclude_finis), emit_section_header_(emit_section_header) {
+           const std::vector<std::string> custome_library_path, bool emit_section_header)
+    : exclude_sos_(exclude_sos),
+      exclude_finis_(exclude_finis),
+      custome_library_path_(custome_library_path),
+      emit_section_header_(emit_section_header) {
     main_binary_ = ReadELF(elf_filename);
     is_executable_ = main_binary_->FindPhdr(PT_INTERP);
+    machine_type = main_binary_->ehdr()->e_machine;
 
     // Register (filename, soname) of main_binary_
     if (main_binary_->name() != "" && main_binary_->soname() != "") {
@@ -176,7 +180,13 @@ void Sold::BuildArrays() {
         CHECK(rel_index < rels_.size());
         Elf_Rel* rel = &rels_[rel_index];
         rel->r_offset = InitArrayOffset() + sizeof(uintptr_t) * i;
-        rel->r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
+        if (machine_type == EM_X86_64) {
+            rel->r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
+        } else if (machine_type == EM_AARCH64) {
+            rel->r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
+        } else {
+            CHECK(false);
+        }
         rel->r_addend = array[i];
     }
 }
@@ -698,6 +708,80 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
     rels_.push_back(newrel);
 }
 
+// Make new relocation table.
+// RelocateSymbol_aarch64 rewrites r_offset of each relocation entries
+// because we decided locations of shared objects in DecideMemOffset.
+void Sold::RelocateSymbol_aarch64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t offset) {
+    const Elf_Sym* sym = &bin->symtab()[ELF_R_SYM(rel->r_info)];
+    std::string soname, version_name;
+    std::tie(soname, version_name) = bin->GetVersion(ELF_R_SYM(rel->r_info), filename_to_soname_);
+
+    int type = ELF_R_TYPE(rel->r_info);
+    const uintptr_t addend = rel->r_addend;
+    Elf_Rel newrel = *rel;
+    if (bin->IsVaddrInTLSData(rel->r_offset)) {
+        const Elf_Phdr* tls = bin->tls();
+        CHECK(tls);
+        uintptr_t off = newrel.r_offset - tls->p_vaddr;
+        off = RemapTLS("reloc", bin, off);
+        newrel.r_offset = off + tls_offset_;
+    } else {
+        newrel.r_offset += offset;
+    }
+
+    LOG(INFO) << "Relocate " << bin->Str(sym->st_name) << " at " << rel->r_offset;
+
+    // Even if we found a defined symbol in src_syms_, we cannot
+    // erase the relocation entry. The address needs to be fixed at
+    // runtime by ASLR function so we set RELATIVE to these resolved symbols.
+    switch (type) {
+        case R_AARCH64_RELATIVE: {
+            if (IsDefined(*sym)) {
+                LOG(WARNING) << "The symbol associated with R_AARCH64_RELATIVE is defined. Because this relocation type doesn't need any "
+                                "symbol, something wrong may have happened.";
+            }
+            newrel.r_addend += offset;
+            break;
+        }
+
+        case R_AARCH64_GLOB_DAT:
+        case R_AARCH64_JUMP_SLOT: {
+            uintptr_t val_or_index;
+            if (syms_.Resolve(bin->Str(sym->st_name), soname, version_name, val_or_index)) {
+                newrel.r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
+                newrel.r_addend = val_or_index;
+            } else {
+                newrel.r_info = ELF_R_INFO(val_or_index, type);
+            }
+            break;
+        }
+
+        case R_AARCH64_ABS64: {
+            uintptr_t val_or_index;
+            if (syms_.Resolve(bin->Str(sym->st_name), soname, version_name, val_or_index)) {
+                newrel.r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
+                newrel.r_addend += val_or_index;
+            } else {
+                newrel.r_info = ELF_R_INFO(val_or_index, type);
+            }
+            break;
+        }
+
+        case R_AARCH64_COPY: {
+            const std::string name = bin->Str(sym->st_name);
+            uintptr_t index = syms_.ResolveCopy(name, soname, version_name);
+            newrel.r_info = ELF_R_INFO(index, type);
+            break;
+        }
+
+        default:
+            LOG(FATAL) << "Unknown relocation type: " << ShowRelocationType(type);
+            CHECK(false);
+    }
+
+    rels_.push_back(newrel);
+}
+
 std::string Sold::ResolveRunPathVariables(const ELFBinary* binary, const std::string& runpath) {
     std::string out = runpath;
 
@@ -724,9 +808,11 @@ std::vector<std::string> Sold::GetLibraryPaths(const ELFBinary* binary) {
     std::vector<std::string> library_paths;
     const std::string& runpath = binary->runpath();
     const std::string& rpath = binary->rpath();
-    if (runpath.empty() && !rpath.empty()) {
-        for (const std::string& path : SplitString(rpath, ":")) {
-            library_paths.push_back(ResolveRunPathVariables(binary, path));
+    if (custome_library_path_.empty()) {
+        if (runpath.empty() && !rpath.empty()) {
+            for (const std::string& path : SplitString(rpath, ":")) {
+                library_paths.push_back(ResolveRunPathVariables(binary, path));
+            }
         }
     }
     for (const std::string& path : ld_library_paths_) {
@@ -738,12 +824,16 @@ std::vector<std::string> Sold::GetLibraryPaths(const ELFBinary* binary) {
         }
     }
 
-    std::vector<std::string> ldsoconfs = ldsoconf::read_ldsoconf();
-    library_paths.insert(library_paths.end(), ldsoconfs.begin(), ldsoconfs.end());
+    if (custome_library_path_.empty()) {
+        std::vector<std::string> ldsoconfs = ldsoconf::read_ldsoconf();
+        library_paths.insert(library_paths.end(), ldsoconfs.begin(), ldsoconfs.end());
 
-    library_paths.push_back("/lib");
-    library_paths.push_back("/usr/lib");
-    library_paths.push_back("/usr/lib64");
+        library_paths.push_back("/lib");
+        library_paths.push_back("/usr/lib");
+        library_paths.push_back("/usr/lib64");
+    }
+
+    library_paths.insert(library_paths.end(), custome_library_path_.begin(), custome_library_path_.end());
 
     return library_paths;
 }

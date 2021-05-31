@@ -37,7 +37,7 @@ int main(int argc, const char* argv[]) {
     }
 
     // This Sold class instrance is used only to get filename_to_soname map.
-    Sold sold(argv[1], {}, {}, false);
+    Sold sold(argv[1], {}, {}, {}, false);
 
     auto b = ReadELF(argv[1]);
     b->ReadDynSymtab(sold.filename_to_soname());

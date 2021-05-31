@@ -35,7 +35,7 @@
 class Sold {
 public:
     Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_finis,
-         bool emit_section_header);
+         const std::vector<std::string> custome_library_path, bool emit_section_header);
 
     void Link(const std::string& out_filename);
 
@@ -357,13 +357,22 @@ private:
     void RelocateSymbols(ELFBinary* bin, const Elf_Rel* rels, size_t num) {
         if (!rels) CHECK_EQ(0, num);
         uintptr_t offset = offsets_[bin];
-        for (size_t i = 0; i < num; ++i) {
-            // TODO(hamaji): Support non-x86-64 architectures.
-            RelocateSymbol_x86_64(bin, &rels[i], offset);
+        if (bin->ehdr()->e_machine == EM_X86_64) {
+            for (size_t i = 0; i < num; ++i) {
+                RelocateSymbol_x86_64(bin, &rels[i], offset);
+            }
+        } else if (bin->ehdr()->e_machine == EM_AARCH64) {
+            for (size_t i = 0; i < num; ++i) {
+                RelocateSymbol_aarch64(bin, &rels[i], offset);
+            }
+        } else {
+            CHECK(false) << "sold does not support " << SOLD_LOG_KEY(bin->ehdr()->e_machine) << ".";
         }
     }
 
     void RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t offset);
+
+    void RelocateSymbol_aarch64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t offset);
 
     void InitLdLibraryPaths() {
         if (const char* paths = getenv("LD_LIBRARY_PATH")) {
@@ -416,11 +425,12 @@ private:
         "libcuda.so",      // NVIDIA Software License Agreement and CUDA Supplement to Software License Agreement (CUDA)
         "libopenblas.so",  // BSD (OpenBLAS) TODO(akawashiro) Including libopenblas.so causes SEGV.
     };
-
+    Elf64_Half machine_type;
     std::unique_ptr<ELFBinary> main_binary_;
     std::vector<std::string> ld_library_paths_;
-    std::vector<std::string> exclude_sos_;
-    std::vector<std::string> exclude_finis_;
+    const std::vector<std::string> exclude_sos_;
+    const std::vector<std::string> exclude_finis_;
+    const std::vector<std::string> custome_library_path_;
     std::map<std::string, std::unique_ptr<ELFBinary>> libraries_;
     std::vector<ELFBinary*> link_binaries_;
     std::map<const ELFBinary*, uintptr_t> offsets_;
