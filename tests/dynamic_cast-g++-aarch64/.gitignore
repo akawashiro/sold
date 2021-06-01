@@ -1,0 +1,5 @@
+lib.o
+lib.so
+lib.so.original
+lib.so.soldout
+main
