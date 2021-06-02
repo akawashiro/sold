@@ -1,7 +1,7 @@
 #! /bin/bash -eux
 
-arch64-linux-gnu-g++-10 -fPIC -shared -Wl,-soname,libhoge.so -o libhoge.so hoge.cc
-arch64-linux-gnu-g++-10 -fPIC -shared -Wl,-soname,libfuga.so -o libfuga.so fuga.cc libhoge.so
+aarch64-linux-gnu-g++-10 -fPIC -shared -Wl,-soname,libhoge.so -o libhoge.so hoge.cc
+aarch64-linux-gnu-g++-10 -fPIC -shared -Wl,-soname,libfuga.so -o libfuga.so fuga.cc libhoge.so
 LD_LIBRARY_PATH=. aarch64-linux-gnu-g++-10 -o main main.cc libfuga.so -pthread
 
 mv libfuga.so libfuga.so.original
