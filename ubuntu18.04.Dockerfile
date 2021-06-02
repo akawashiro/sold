@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 RUN apt-get update
-RUN apt-get install -y ninja-build cmake gcc g++ git python3 python3-distutils python3-dev python3-pip
+RUN apt-get install -y ninja-build cmake gcc g++ git python3 python3-distutils python3-dev python3-pip g++-aarch64-linux-gnu qemu qemu-system-aarch64 qemu-user
 RUN pip3 install pytest numpy torch==1.8.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 COPY . /sold
 WORKDIR /sold
