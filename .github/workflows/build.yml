@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install requirements
-      run: sudo apt install ninja-build
+      run: sudo apt install ninja-build g++-aarch64-linux-gnu qemu qemu-system-aarch64 qemu-user
     - name: Install Python packages
       run: pip install pytest numpy
     - name: CMake
