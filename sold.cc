@@ -29,6 +29,7 @@ Sold::Sold(const std::string& elf_filename, const std::vector<std::string>& excl
     main_binary_ = ReadELF(elf_filename);
     is_executable_ = main_binary_->FindPhdr(PT_INTERP);
     machine_type = main_binary_->ehdr()->e_machine;
+    memprotect_builder_.SetMachineType(machine_type);
 
     // Register (filename, soname) of main_binary_
     if (main_binary_->name() != "" && main_binary_->soname() != "") {
