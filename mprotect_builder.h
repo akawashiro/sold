@@ -58,9 +58,7 @@ public:
             // mprotect_code_head += sizeof(memprotect_end_code_aarch64);
             // CHECK(fwrite(mprotect_code, sizeof(uint8_t), Size(), fp) == Size());
             // free(mprotect_code);
-            FILE* oldfp = fp;
             EmitAarch64(fp, mprotect_code_offset);
-            CHECK_EQ(fp - oldfp, Size());
         } else {
             CHECK(false) << SOLD_LOG_KEY(machine_type_) << " is not supported.";
         }

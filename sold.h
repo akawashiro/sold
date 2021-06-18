@@ -154,7 +154,7 @@ private:
             return sizeof(MprotectBuilder::memprotect_body_code_x86_64) * n_memprotect +
                    sizeof(MprotectBuilder::memprotect_end_code_x86_64);
         } else if (machine_type == EM_AARCH64) {
-            return sizeof(MprotectBuilder::body_code_length_aarch64) * n_memprotect + sizeof(MprotectBuilder::ret_code_length_aarch64);
+            return MprotectBuilder::body_code_length_aarch64 * n_memprotect + MprotectBuilder::ret_code_length_aarch64;
         } else {
             CHECK(false) << SOLD_LOG_KEY(machine_type) << " is not supported.";
         }

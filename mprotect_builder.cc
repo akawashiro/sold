@@ -35,7 +35,7 @@ void MprotectBuilder::EmitX86_64(FILE* fp, uintptr_t mprotect_code_offset) {
 }
 
 namespace {
-std::vector<uint32_t> set_immediate_to_register(uint64_t value, uint8_t reg) {
+std::vector<uint32_t> set_immediate_to_register(int64_t value, uint8_t reg) {
     std::vector<uint32_t> ret;
     for (int i = 0; i < 4; i++) {
         uint32_t u = 0b11110010'10000000'00000000'00000000;  // movk instruction
@@ -49,9 +49,14 @@ std::vector<uint32_t> set_immediate_to_register(uint64_t value, uint8_t reg) {
 }  // namespace
 
 void MprotectBuilder::EmitAarch64(FILE* fp, uintptr_t mprotect_code_offset) {
+    long int old_pos = ftell(fp);
+
+    LOG(INFO) << "MprotectBuilder::EmitAarch64";
     std::vector<uint32_t> insts;
     for (int i = 0; i < offsets.size(); i++) {
-        auto set_x0 = set_immediate_to_register(offsets[i], 0);     // x0 <- offsets[i] using 4 movk instructions
+        // 5 is the length of x0 <- offsets[i] using 4 movk instructions; adr x3, 0
+        int64_t offset = offsets[i] - (static_cast<int64_t>(mprotect_code_offset) + body_code_length_aarch64 + 5 * 4);
+        auto set_x0 = set_immediate_to_register(offset, 0);         // x0 <- offsets[i] using 4 movk instructions
         insts.insert(insts.end(), set_x0.begin(), set_x0.end());    //
         insts.emplace_back(0b00010000'00000000'00000000'00000011);  // adr x3, 0
         insts.emplace_back(0x8B030000);                             // add x0, x0,x3
@@ -62,10 +67,10 @@ void MprotectBuilder::EmitAarch64(FILE* fp, uintptr_t mprotect_code_offset) {
         insts.emplace_back(0xD4000001);                             // svc 0
     }
     insts.emplace_back(0xD65F03C0);
-    LOG(INFO) << SOLD_LOG_KEY(insts.size());
 
     for (uint32_t i : insts) {
         CHECK(fwrite(&i, sizeof(uint32_t), 1, fp) == 1);
     }
+    CHECK(ftell(fp) - old_pos == Size());
 }
 
