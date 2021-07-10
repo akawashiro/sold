@@ -447,7 +447,7 @@ void Sold::CollectArrays() {
     }
     // TODO(akawashiro) In case of executables, this code causes SEGV. I don't
     // kwow the reason.
-    if (!is_executable_) init_array_.emplace_back(mprotect_offset_);
+    // if (!is_executable_) init_array_.emplace_back(mprotect_offset_);
     for (ELFBinary* bin : link_binaries_) {
         uintptr_t offset = offsets_[bin];
         if (std::any_of(exclude_finis_.cbegin(), exclude_finis_.cend(), [bin](const auto s) { return HasPrefix(bin->soname(), s); }))
