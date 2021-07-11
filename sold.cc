@@ -23,7 +23,7 @@
 Sold::Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_inits,
            const std::vector<std::string>& exclude_finis, const std::vector<std::string> custome_library_path, bool emit_section_header)
     : exclude_sos_(exclude_sos),
-      exclude_inits_(exclude_finis),
+      exclude_inits_(exclude_inits),
       exclude_finis_(exclude_finis),
       custome_library_path_(custome_library_path),
       emit_section_header_(emit_section_header) {
