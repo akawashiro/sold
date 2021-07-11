@@ -17,14 +17,14 @@ set_target_properties(torch_test PROPERTIES SUFFIX ".so.original")
 
 # TODO(akawashiro): Remove exclude-from-init and exclude-from-fini option
 # We exclude libtorch_cpu.so for x86-64.
-# We exclude liblapack.so for aarch64.
+# We exclude liblapack.so and libblas.so for aarch64.
 add_custom_target(torch_test_soldout ALL
-    COMMAND GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.soldout --section-headers --check-output --exclude-from-fini libtorch_cpu.so --exclude-from-init liblapack.so --exclude-from-fini liblapack.so && ln -sf libtorch_test.so.soldout libtorch_test.so
+    COMMAND GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.soldout --section-headers --check-output --exclude-from-fini libtorch_cpu.so --exclude-from-init liblapack.so --exclude-from-fini liblapack.so --exclude-from-init libblas.so --exclude-from-fini libblas.so && ln -sf libtorch_test.so.soldout libtorch_test.so
     DEPENDS torch_test sold
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_target(torch_test_soldout_wo_section EXCLUDE_FROM_ALL
-    COMMAND GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.wosection.soldout --check-output --exclude-from-fini libtorch_cpu.so --exclude-from-init liblapack.so --exclude-from-fini liblapack.so 
+    COMMAND GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.wosection.soldout --check-output --exclude-from-fini libtorch_cpu.so --exclude-from-init liblapack.so --exclude-from-fini liblapack.so --exclude-from-init libblas.so --exclude-from-fini libblas.so
     DEPENDS torch_test sold
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
