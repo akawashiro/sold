@@ -27,6 +27,7 @@ Options:
 -L, --custom-library-path PATH  Use PATH instead of the default path such as /usr/lib
 --section-headers               Emit section headers
 --check-output                  Check the output using sold itself
+--exclude-from-init             Do not use .init_array of the ELF file
 --exclude-from-fini             Do not use .fini_array of the ELF file
 
 The last argument is interpreted as SOURCE_FILE when -i option isn't given.
@@ -44,13 +45,15 @@ int main(int argc, char* const argv[]) {
         {"custom-library-path", required_argument, nullptr, 'L'},
         {"section-headers", no_argument, nullptr, 1},
         {"check-output", no_argument, nullptr, 2},
-        {"exclude-from-fini", required_argument, nullptr, 3},
+        {"exclude-from-init", required_argument, nullptr, 3},
+        {"exclude-from-fini", required_argument, nullptr, 4},
         {0, 0, 0, 0},
     };
 
     std::string input_file;
     std::string output_file;
     std::vector<std::string> exclude_sos;
+    std::vector<std::string> exclude_inits;
     std::vector<std::string> exclude_finis;
     std::vector<std::string> custome_library_path;
     bool emit_section_header = false;
@@ -66,6 +69,9 @@ int main(int argc, char* const argv[]) {
                 check_output = true;
                 break;
             case 3:
+                exclude_inits.push_back(optarg);
+                break;
+            case 4:
                 exclude_finis.push_back(optarg);
                 break;
             case 'e':
@@ -98,12 +104,12 @@ int main(int argc, char* const argv[]) {
         return 1;
     }
 
-    Sold sold(input_file, exclude_sos, exclude_finis, custome_library_path, emit_section_header);
+    Sold sold(input_file, exclude_sos, exclude_inits, exclude_finis, custome_library_path, emit_section_header);
     sold.Link(output_file);
 
     if (check_output) {
         std::string dummy = output_file + ".dummy-for-check-output";
-        Sold check(output_file, exclude_sos, exclude_finis, custome_library_path, emit_section_header);
+        Sold check(output_file, exclude_sos, exclude_inits, exclude_finis, custome_library_path, emit_section_header);
         check.Link(dummy);
         std::remove(dummy.c_str());
     }

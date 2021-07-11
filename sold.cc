@@ -20,9 +20,10 @@
 #include <queue>
 #include <set>
 
-Sold::Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_finis,
-           const std::vector<std::string> custome_library_path, bool emit_section_header)
+Sold::Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_inits,
+           const std::vector<std::string>& exclude_finis, const std::vector<std::string> custome_library_path, bool emit_section_header)
     : exclude_sos_(exclude_sos),
+      exclude_inits_(exclude_finis),
       exclude_finis_(exclude_finis),
       custome_library_path_(custome_library_path),
       emit_section_header_(emit_section_header) {
@@ -440,6 +441,8 @@ void Sold::CollectTLS() {
 void Sold::CollectArrays() {
     for (auto iter = link_binaries_.rbegin(); iter != link_binaries_.rend(); ++iter) {
         ELFBinary* bin = *iter;
+        if (std::any_of(exclude_inits_.cbegin(), exclude_inits_.cend(), [bin](const auto s) { return HasPrefix(bin->soname(), s); }))
+            continue;
         uintptr_t offset = offsets_[bin];
         for (uintptr_t ptr : bin->init_array()) {
             init_array_.emplace_back(ptr + offset);
@@ -447,7 +450,7 @@ void Sold::CollectArrays() {
     }
     // TODO(akawashiro) In case of executables, this code causes SEGV. I don't
     // kwow the reason.
-    // if (!is_executable_) init_array_.emplace_back(mprotect_offset_);
+    if (!is_executable_) init_array_.emplace_back(mprotect_offset_);
     for (ELFBinary* bin : link_binaries_) {
         uintptr_t offset = offsets_[bin];
         if (std::any_of(exclude_finis_.cbegin(), exclude_finis_.cend(), [bin](const auto s) { return HasPrefix(bin->soname(), s); }))
