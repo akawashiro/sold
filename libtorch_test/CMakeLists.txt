@@ -15,14 +15,13 @@ add_library(torch_test SHARED torch_test.cc)
 target_link_libraries(torch_test PRIVATE "${TORCH_LIBRARIES}" -Wl,-soname,libtorch_test.so)
 set_target_properties(torch_test PROPERTIES SUFFIX ".so.original")
 
-# TODO(akawashiro): Remove exclude-from-fini option
 add_custom_target(torch_test_soldout ALL
-    COMMAND GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.soldout --section-headers --check-output --exclude-from-fini libtorch_cpu.so && ln -sf libtorch_test.so.soldout libtorch_test.so
+    COMMAND GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.soldout --section-headers --check-output && ln -sf libtorch_test.so.soldout libtorch_test.so
     DEPENDS torch_test sold
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_target(torch_test_soldout_wo_section EXCLUDE_FROM_ALL
-    COMMAND GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.wosection.soldout --check-output --exclude-from-fini libtorch_cpu.so
+    COMMAND GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.wosection.soldout --check-output
     DEPENDS torch_test sold
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 

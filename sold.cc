@@ -442,7 +442,9 @@ void Sold::CollectArrays() {
         ELFBinary* bin = *iter;
         uintptr_t offset = offsets_[bin];
         for (uintptr_t ptr : bin->init_array()) {
-            init_array_.emplace_back(ptr + offset);
+            if (ptr) {
+                init_array_.emplace_back(ptr + offset);
+            }
         }
     }
     // TODO(akawashiro) In case of executables, this code causes SEGV. I don't
@@ -453,7 +455,9 @@ void Sold::CollectArrays() {
         if (std::any_of(exclude_finis_.cbegin(), exclude_finis_.cend(), [bin](const auto s) { return HasPrefix(bin->soname(), s); }))
             continue;
         for (uintptr_t ptr : bin->fini_array()) {
-            fini_array_.emplace_back(ptr + offset);
+            if (ptr) {
+                fini_array_.emplace_back(ptr + offset);
+            }
         }
     }
     LOG(INFO) << "Array numbers: init_array=" << init_array_.size() << " fini_array=" << fini_array_.size();
