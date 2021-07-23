@@ -669,8 +669,12 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                       << SOLD_LOG_64BITS(tls_.data[tls_.bin_to_index[bin]].file_offset)
                       << SOLD_LOG_64BITS(tls_.data[tls_.bin_to_index[bin]].bss_offset);
 
-            CHECK(ELF_R_SYM(rel->r_info) == 0)
-                << "The symbol associated with R_X86_64_DTPMOD64 in TLS local dynamic model should be the dummy.";
+            // We cannot determine whether the associated symbol is a dummy or
+            // not just using its index. In addition to the traditional dummy
+            // symbol at index 0, I found some compilers emit a dummy symbol at
+            // index 1 of SECTION type.
+            CHECK_EQ(name, "") << "The symbol associated with R_X86_64_DTPMOD64 in TLS local dynamic model should be the dummy."
+                               << SOLD_LOG_KEY(bin->filename());
 
             if (is_bss) {
                 // TLS variables without initial values are remapped from
