@@ -64,7 +64,15 @@ private:
         return num_phdrs;
     }
 
-    uintptr_t GnuHashOffset() const { return sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * CountPhdrs(); }
+    // We emit .init_array and .fini_array at the head of ELF file.
+    // This is because we want to fix the addresses of arrays as much as possible to emit relocation entries easily.
+    uintptr_t InitArrayOffset() const { return AlignNext(sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * CountPhdrs(), 7); }
+    uintptr_t InitArraySize() const { return sizeof(uintptr_t) * init_array_.size(); }
+
+    uintptr_t FiniArrayOffset() const { return InitArrayOffset() + InitArraySize(); }
+    uintptr_t FiniArraySize() const { return sizeof(uintptr_t) * fini_array_.size(); }
+
+    uintptr_t GnuHashOffset() const { return FiniArrayOffset() + FiniArraySize(); }
     uintptr_t GnuHashSize() const { return syms_.GnuHashSize(); }
 
     uintptr_t SymtabOffset() const { return GnuHashOffset() + GnuHashSize(); }
@@ -79,13 +87,7 @@ private:
     uintptr_t RelOffset() const { return VerneedOffset() + VerneedSize(); }
     uintptr_t RelSize() const { return rels_.size() * sizeof(Elf_Rel); }
 
-    uintptr_t InitArrayOffset() const { return AlignNext(RelOffset() + RelSize(), 7); }
-    uintptr_t InitArraySize() const { return sizeof(uintptr_t) * init_array_.size(); }
-
-    uintptr_t FiniArrayOffset() const { return InitArrayOffset() + InitArraySize(); }
-    uintptr_t FiniArraySize() const { return sizeof(uintptr_t) * fini_array_.size(); }
-
-    uintptr_t StrtabOffset() const { return FiniArrayOffset() + FiniArraySize(); }
+    uintptr_t StrtabOffset() const { return RelOffset() + RelSize(); }
     uintptr_t StrtabSize() const { return strtab_.size(); }
 
     uintptr_t DynamicOffset() const { return StrtabOffset() + StrtabSize(); }
@@ -465,5 +467,7 @@ private:
     std::vector<Elf_Dyn> dynamic_;
     std::vector<uintptr_t> init_array_;
     std::vector<uintptr_t> fini_array_;
+    std::map<ELFBinary*, uintptr_t> bin_to_init_array_offset_;
+    std::map<ELFBinary*, uintptr_t> bin_to_fini_array_offset_;
     TLS tls_;
 };

@@ -98,12 +98,12 @@ void Sold::Emit(const std::string& out_filename) {
     CHECK(fp);
     Write(fp, ehdr_);
     EmitPhdrs(fp);
+    EmitArrays(fp);
     EmitGnuHash(fp);
     EmitSymtab(fp);
     EmitVersym(fp);
     EmitVerneed(fp);
     EmitRel(fp);
-    EmitArrays(fp);
     EmitStrtab(fp);
     EmitDynamic(fp);
     EmitShstrtab(fp);
@@ -169,27 +169,27 @@ void Sold::BuildLoads() {
 }
 
 void Sold::BuildArrays() {
-    size_t orig_rel_size = rels_.size();
-    for (size_t i = 0; i < init_array_.size() + fini_array_.size(); ++i) {
-        rels_.push_back(Elf_Rel{});
-    }
+    // size_t orig_rel_size = rels_.size();
+    // for (size_t i = 0; i < init_array_.size() + fini_array_.size(); ++i) {
+    //     rels_.push_back(Elf_Rel{});
+    // }
 
     std::vector<uintptr_t> array = init_array_;
     std::copy(fini_array_.begin(), fini_array_.end(), std::back_inserter(array));
-    for (size_t i = 0; i < array.size(); ++i) {
-        size_t rel_index = orig_rel_size + i;
-        CHECK(rel_index < rels_.size());
-        Elf_Rel* rel = &rels_[rel_index];
-        rel->r_offset = InitArrayOffset() + sizeof(uintptr_t) * i;
-        if (machine_type == EM_X86_64) {
-            rel->r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
-        } else if (machine_type == EM_AARCH64) {
-            rel->r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
-        } else {
-            CHECK(false);
-        }
-        rel->r_addend = array[i];
-    }
+    // for (size_t i = 0; i < array.size(); ++i) {
+    //     // size_t rel_index = orig_rel_size + i;
+    //     CHECK(rel_index < rels_.size());
+    //     Elf_Rel* rel = &rels_[rel_index];
+    //     rel->r_offset = InitArrayOffset() + sizeof(uintptr_t) * i;
+    //     if (machine_type == EM_X86_64) {
+    //         rel->r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
+    //     } else if (machine_type == EM_AARCH64) {
+    //         rel->r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
+    //     } else {
+    //         CHECK(false);
+    //     }
+    //     rel->r_addend = array[i];
+    // }
 }
 
 void Sold::BuildDynamic() {
@@ -441,23 +441,23 @@ void Sold::CollectArrays() {
     for (auto iter = link_binaries_.rbegin(); iter != link_binaries_.rend(); ++iter) {
         ELFBinary* bin = *iter;
         uintptr_t offset = offsets_[bin];
+        bin_to_init_array_offset_[bin] = InitArrayOffset() + sizeof(uintptr_t) * init_array_.size();
         for (uintptr_t ptr : bin->init_array()) {
-            if (ptr) {
-                init_array_.emplace_back(ptr + offset);
-            }
+            init_array_.emplace_back(ptr + offset);
         }
     }
     // TODO(akawashiro) In case of executables, this code causes SEGV. I don't
     // kwow the reason.
-    if (!is_executable_) init_array_.emplace_back(mprotect_offset_);
+    // TODO(akawashiro): Emit relocation entry for mprotect_offset_!!!
+    // TODO kokoyaru!!!!
+    // if (!is_executable_) init_array_.emplace_back(mprotect_offset_);
     for (ELFBinary* bin : link_binaries_) {
         uintptr_t offset = offsets_[bin];
         if (std::any_of(exclude_finis_.cbegin(), exclude_finis_.cend(), [bin](const auto s) { return HasPrefix(bin->soname(), s); }))
             continue;
+        bin_to_fini_array_offset_[bin] = FiniArrayOffset() + sizeof(uintptr_t) * fini_array_.size();
         for (uintptr_t ptr : bin->fini_array()) {
-            if (ptr) {
-                fini_array_.emplace_back(ptr + offset);
-            }
+            fini_array_.emplace_back(ptr + offset);
         }
     }
     LOG(INFO) << "Array numbers: init_array=" << init_array_.size() << " fini_array=" << fini_array_.size();
@@ -570,6 +570,16 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
         uintptr_t off = newrel.r_offset - tls->p_vaddr;
         off = RemapTLS("reloc", bin, off);
         newrel.r_offset = off + tls_offset_;
+    } else if (bin->IsOffsetInInitarray(bin->OffsetFromAddr(rel->r_offset))) {
+        CHECK(bin_to_init_array_offset_.find(bin) != bin_to_init_array_offset_.end());
+
+        newrel.r_offset -= bin->AddrFromOffset(reinterpret_cast<Elf_Addr>(bin->init_array_offset()));
+        newrel.r_offset += bin_to_init_array_offset_[bin];
+    } else if (bin->IsOffsetInFiniarray(bin->OffsetFromAddr(rel->r_offset))) {
+        CHECK(bin_to_fini_array_offset_.find(bin) != bin_to_fini_array_offset_.end());
+
+        newrel.r_offset -= bin->AddrFromOffset(reinterpret_cast<Elf_Addr>(bin->fini_array_offset()));
+        newrel.r_offset += bin_to_fini_array_offset_[bin];
     } else {
         newrel.r_offset += offset;
     }
