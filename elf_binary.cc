@@ -70,14 +70,16 @@ Range ELFBinary::GetRange() const {
     return range;
 }
 
-bool ELFBinary::IsOffsetInInitarray(uintptr_t offset) const {
-    return reinterpret_cast<uintptr_t>(init_array_offset_) <= offset &&
-           offset < reinterpret_cast<uintptr_t>(init_array_offset_ + init_arraysz_);
+bool ELFBinary::IsAddrInInitarray(uintptr_t addr) const {
+    CHECK(init_array_addr_ != 0);
+    LOG(INFO) << SOLD_LOG_BITS(addr) << SOLD_LOG_BITS(init_array_addr_) << SOLD_LOG_BITS(init_arraysz_);
+    return reinterpret_cast<uintptr_t>(init_array_addr_) <= addr && addr < reinterpret_cast<uintptr_t>(init_array_addr_ + init_arraysz_);
 }
 
-bool ELFBinary::IsOffsetInFiniarray(uintptr_t offset) const {
-    return reinterpret_cast<uintptr_t>(fini_array_offset_) <= offset &&
-           offset < reinterpret_cast<uintptr_t>(fini_array_offset_ + fini_arraysz_);
+bool ELFBinary::IsAddrInFiniarray(uintptr_t addr) const {
+    CHECK(fini_array_addr_ != 0);
+    LOG(INFO) << SOLD_LOG_BITS(addr) << SOLD_LOG_BITS(fini_array_addr_) << SOLD_LOG_BITS(fini_arraysz_);
+    return reinterpret_cast<uintptr_t>(fini_array_addr_) <= addr && addr < reinterpret_cast<uintptr_t>(fini_array_addr_ + fini_arraysz_);
 }
 
 bool ELFBinary::IsVaddrInTLSData(uintptr_t vaddr) const {
@@ -339,6 +341,11 @@ void ELFBinary::ParsePhdrs() {
             gnu_relro_ = phdr;
         }
     }
+
+    LOG(INFO) << SOLD_LOG_BITS(reinterpret_cast<uintptr_t>(init_array_offset_)) << SOLD_LOG_BITS(reinterpret_cast<uintptr_t>(head()));
+    LOG(INFO) << SOLD_LOG_BITS(reinterpret_cast<uintptr_t>(fini_array_offset_)) << SOLD_LOG_BITS(reinterpret_cast<uintptr_t>(head()));
+    if (init_array_offset_) init_array_addr_ = AddrFromOffset(reinterpret_cast<char*>(init_array_offset_) - head());
+    if (fini_array_offset_) fini_array_addr_ = AddrFromOffset(reinterpret_cast<char*>(fini_array_offset_) - head());
     CHECK(!phdrs_.empty());
 }
 
