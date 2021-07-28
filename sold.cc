@@ -570,6 +570,20 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
         uintptr_t off = newrel.r_offset - tls->p_vaddr;
         off = RemapTLS("reloc", bin, off);
         newrel.r_offset = off + tls_offset_;
+    } else if (bin->IsAddrInInitarray(rel->r_offset)) {
+        CHECK(bin_to_init_array_offset_.find(bin) != bin_to_init_array_offset_.end());
+
+        newrel.r_offset -= bin->init_array_addr();
+        newrel.r_offset += bin_to_init_array_offset_[bin];
+        LOG(INFO) << SOLD_LOG_BITS(bin->init_array_addr()) << SOLD_LOG_BITS(bin_to_init_array_offset_[bin])
+                  << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend) << SOLD_LOG_BITS(offset);
+    } else if (bin->IsAddrInFiniarray(rel->r_offset)) {
+        CHECK(bin_to_fini_array_offset_.find(bin) != bin_to_fini_array_offset_.end());
+
+        newrel.r_offset -= bin->fini_array_addr();
+        newrel.r_offset += bin_to_fini_array_offset_[bin];
+        LOG(INFO) << SOLD_LOG_BITS(bin->fini_array_addr()) << SOLD_LOG_BITS(bin_to_fini_array_offset_[bin])
+                  << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend) << SOLD_LOG_BITS(offset);
     } else {
         newrel.r_offset += offset;
     }
