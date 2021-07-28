@@ -467,5 +467,7 @@ private:
     std::vector<Elf_Dyn> dynamic_;
     std::vector<uintptr_t> init_array_;
     std::vector<uintptr_t> fini_array_;
+    std::map<ELFBinary*, uintptr_t> bin_to_init_array_offset_;
+    std::map<ELFBinary*, uintptr_t> bin_to_fini_array_offset_;
     TLS tls_;
 };

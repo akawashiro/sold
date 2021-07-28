@@ -441,6 +441,7 @@ void Sold::CollectArrays() {
     for (auto iter = link_binaries_.rbegin(); iter != link_binaries_.rend(); ++iter) {
         ELFBinary* bin = *iter;
         uintptr_t offset = offsets_[bin];
+        bin_to_init_array_offset_[bin] = InitArrayOffset() + sizeof(uintptr_t) * init_array_.size();
         for (uintptr_t ptr : bin->init_array()) {
             init_array_.emplace_back(ptr + offset);
         }
@@ -452,6 +453,7 @@ void Sold::CollectArrays() {
         uintptr_t offset = offsets_[bin];
         if (std::any_of(exclude_finis_.cbegin(), exclude_finis_.cend(), [bin](const auto s) { return HasPrefix(bin->soname(), s); }))
             continue;
+        bin_to_fini_array_offset_[bin] = FiniArrayOffset() + sizeof(uintptr_t) * fini_array_.size();
         for (uintptr_t ptr : bin->fini_array()) {
             fini_array_.emplace_back(ptr + offset);
         }
