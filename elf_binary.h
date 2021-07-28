@@ -59,12 +59,17 @@ public:
 
     uintptr_t init() const { return init_; }
     uintptr_t fini() const { return fini_; }
+    const uintptr_t init_array_addr() const { return init_array_addr_; };
+    const uintptr_t fini_array_addr() const { return fini_array_addr_; };
     const std::vector<uintptr_t>& init_array() const { return init_array_; }
     const std::vector<uintptr_t>& fini_array() const { return fini_array_; }
 
     const std::vector<Syminfo>& GetSymbolMap() const { return syms_; }
 
     Range GetRange() const;
+
+    bool IsAddrInInitarray(uintptr_t addr) const;
+    bool IsAddrInFiniarray(uintptr_t addr) const;
 
     bool IsVaddrInTLSData(uintptr_t vaddr) const;
     bool IsOffsetInTLSData(uintptr_t offset) const;
@@ -130,6 +135,13 @@ private:
 
     Elf_GnuHash* gnu_hash_{nullptr};
     Elf_Hash* hash_{nullptr};
+
+    uintptr_t* init_array_offset_{0};
+    uintptr_t init_arraysz_{0};
+    uintptr_t init_array_addr_{0};
+    uintptr_t* fini_array_offset_{0};
+    uintptr_t fini_array_addr_{0};
+    uintptr_t fini_arraysz_{0};
 
     uintptr_t init_{0};
     uintptr_t fini_{0};

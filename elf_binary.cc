@@ -70,6 +70,18 @@ Range ELFBinary::GetRange() const {
     return range;
 }
 
+bool ELFBinary::IsAddrInInitarray(uintptr_t addr) const {
+    CHECK(init_array_addr_ != 0);
+    LOG(INFO) << SOLD_LOG_BITS(addr) << SOLD_LOG_BITS(init_array_addr_) << SOLD_LOG_BITS(init_arraysz_);
+    return reinterpret_cast<uintptr_t>(init_array_addr_) <= addr && addr < reinterpret_cast<uintptr_t>(init_array_addr_ + init_arraysz_);
+}
+
+bool ELFBinary::IsAddrInFiniarray(uintptr_t addr) const {
+    CHECK(fini_array_addr_ != 0);
+    LOG(INFO) << SOLD_LOG_BITS(addr) << SOLD_LOG_BITS(fini_array_addr_) << SOLD_LOG_BITS(fini_arraysz_);
+    return reinterpret_cast<uintptr_t>(fini_array_addr_) <= addr && addr < reinterpret_cast<uintptr_t>(fini_array_addr_ + fini_arraysz_);
+}
+
 bool ELFBinary::IsVaddrInTLSData(uintptr_t vaddr) const {
     if (tls_) {
         return tls_->p_vaddr <= vaddr && vaddr < (tls_->p_vaddr + tls_->p_filesz);
@@ -329,6 +341,11 @@ void ELFBinary::ParsePhdrs() {
             gnu_relro_ = phdr;
         }
     }
+
+    LOG(INFO) << SOLD_LOG_BITS(reinterpret_cast<uintptr_t>(init_array_offset_)) << SOLD_LOG_BITS(reinterpret_cast<uintptr_t>(head()));
+    LOG(INFO) << SOLD_LOG_BITS(reinterpret_cast<uintptr_t>(fini_array_offset_)) << SOLD_LOG_BITS(reinterpret_cast<uintptr_t>(head()));
+    if (init_array_offset_) init_array_addr_ = AddrFromOffset(reinterpret_cast<char*>(init_array_offset_) - head());
+    if (fini_array_offset_) fini_array_addr_ = AddrFromOffset(reinterpret_cast<char*>(fini_array_offset_) - head());
     CHECK(!phdrs_.empty());
 }
 
@@ -491,10 +508,10 @@ void ELFBinary::ParseDynamic(size_t off, size_t size) {
         dyns.push_back(dyn);
     }
 
-    uintptr_t* init_array{0};
-    uintptr_t init_arraysz{0};
-    uintptr_t* fini_array{0};
-    uintptr_t fini_arraysz{0};
+    // uintptr_t* init_array{0};
+    // uintptr_t init_arraysz{0};
+    // uintptr_t* fini_array{0};
+    // uintptr_t fini_arraysz{0};
     for (Elf_Dyn* dyn : dyns) {
         auto get_ptr = [this, dyn]() { return GetPtr(dyn->d_un.d_ptr); };
         if (dyn->d_tag == DT_STRTAB) {
@@ -521,13 +538,13 @@ void ELFBinary::ParseDynamic(size_t off, size_t size) {
             // TODO(hamaji): Support 32bit?
             CHECK(false);
         } else if (dyn->d_tag == DT_INIT_ARRAY) {
-            init_array = reinterpret_cast<uintptr_t*>(get_ptr());
+            init_array_offset_ = reinterpret_cast<uintptr_t*>(get_ptr());
         } else if (dyn->d_tag == DT_INIT_ARRAYSZ) {
-            init_arraysz = dyn->d_un.d_val;
+            init_arraysz_ = dyn->d_un.d_val;
         } else if (dyn->d_tag == DT_FINI_ARRAY) {
-            fini_array = reinterpret_cast<uintptr_t*>(get_ptr());
+            fini_array_offset_ = reinterpret_cast<uintptr_t*>(get_ptr());
         } else if (dyn->d_tag == DT_FINI_ARRAYSZ) {
-            fini_arraysz = dyn->d_un.d_val;
+            fini_arraysz_ = dyn->d_un.d_val;
         } else if (dyn->d_tag == DT_INIT) {
             init_ = dyn->d_un.d_ptr;
         } else if (dyn->d_tag == DT_FINI) {
@@ -546,8 +563,8 @@ void ELFBinary::ParseDynamic(size_t off, size_t size) {
     }
     CHECK(strtab_);
 
-    ParseFuncArray(init_array, init_arraysz, &init_array_);
-    ParseFuncArray(fini_array, fini_arraysz, &fini_array_);
+    ParseFuncArray(init_array_offset_, init_arraysz_, &init_array_);
+    ParseFuncArray(fini_array_offset_, fini_arraysz_, &fini_array_);
 
     for (Elf_Dyn* dyn : dyns) {
         if (dyn->d_tag == DT_NEEDED) {
@@ -569,7 +586,7 @@ void ELFBinary::ParseFuncArray(uintptr_t* array, uintptr_t size, std::vector<uin
     }
 }
 
-Elf_Addr ELFBinary::OffsetFromAddr(Elf_Addr addr) const {
+Elf_Addr ELFBinary::OffsetFromAddr(const Elf_Addr addr) const {
     for (Elf_Phdr* phdr : loads_) {
         if (phdr->p_vaddr <= addr && addr < phdr->p_vaddr + phdr->p_memsz) {
             return addr - phdr->p_vaddr + phdr->p_offset;
@@ -581,7 +598,7 @@ Elf_Addr ELFBinary::OffsetFromAddr(Elf_Addr addr) const {
     LOG(FATAL) << "Address " << HexString(addr, 16) << " cannot be resolved";
 }
 
-Elf_Addr ELFBinary::AddrFromOffset(Elf_Addr offset) const {
+Elf_Addr ELFBinary::AddrFromOffset(const Elf_Addr offset) const {
     for (Elf_Phdr* phdr : loads_) {
         if (phdr->p_offset <= offset && offset < phdr->p_offset + phdr->p_filesz) {
             return offset - phdr->p_offset + phdr->p_vaddr;
