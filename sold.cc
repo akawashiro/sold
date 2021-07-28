@@ -98,12 +98,12 @@ void Sold::Emit(const std::string& out_filename) {
     CHECK(fp);
     Write(fp, ehdr_);
     EmitPhdrs(fp);
+    EmitArrays(fp);
     EmitGnuHash(fp);
     EmitSymtab(fp);
     EmitVersym(fp);
     EmitVerneed(fp);
     EmitRel(fp);
-    EmitArrays(fp);
     EmitStrtab(fp);
     EmitDynamic(fp);
     EmitShstrtab(fp);
