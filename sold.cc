@@ -169,27 +169,27 @@ void Sold::BuildLoads() {
 }
 
 void Sold::BuildArrays() {
-    size_t orig_rel_size = rels_.size();
-    for (size_t i = 0; i < init_array_.size() + fini_array_.size(); ++i) {
-        rels_.push_back(Elf_Rel{});
-    }
+    // size_t orig_rel_size = rels_.size();
+    // for (size_t i = 0; i < init_array_.size() + fini_array_.size(); ++i) {
+    //     rels_.push_back(Elf_Rel{});
+    // }
 
     std::vector<uintptr_t> array = init_array_;
     std::copy(fini_array_.begin(), fini_array_.end(), std::back_inserter(array));
-    for (size_t i = 0; i < array.size(); ++i) {
-        size_t rel_index = orig_rel_size + i;
-        CHECK(rel_index < rels_.size());
-        Elf_Rel* rel = &rels_[rel_index];
-        rel->r_offset = InitArrayOffset() + sizeof(uintptr_t) * i;
-        if (machine_type == EM_X86_64) {
-            rel->r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
-        } else if (machine_type == EM_AARCH64) {
-            rel->r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
-        } else {
-            CHECK(false);
-        }
-        rel->r_addend = array[i];
-    }
+    // for (size_t i = 0; i < array.size(); ++i) {
+    //     size_t rel_index = orig_rel_size + i;
+    //     CHECK(rel_index < rels_.size());
+    //     Elf_Rel* rel = &rels_[rel_index];
+    //     rel->r_offset = InitArrayOffset() + sizeof(uintptr_t) * i;
+    //     if (machine_type == EM_X86_64) {
+    //         rel->r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
+    //     } else if (machine_type == EM_AARCH64) {
+    //         rel->r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
+    //     } else {
+    //         CHECK(false);
+    //     }
+    //     rel->r_addend = array[i];
+    // }
 }
 
 void Sold::BuildDynamic() {
