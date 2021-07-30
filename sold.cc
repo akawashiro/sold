@@ -170,12 +170,28 @@ void Sold::BuildLoads() {
 
 void Sold::BuildArrays() {
     // size_t orig_rel_size = rels_.size();
+    // rels_.push_back(Elf_Rel{});
     // for (size_t i = 0; i < init_array_.size() + fini_array_.size(); ++i) {
     //     rels_.push_back(Elf_Rel{});
     // }
 
     std::vector<uintptr_t> array = init_array_;
     std::copy(fini_array_.begin(), fini_array_.end(), std::back_inserter(array));
+
+    // We must emit a relocation because the first element of init_array_ is
+    // mprotect_offset_.
+    CHECK_GE(init_array_.size(), 1);
+    Elf_Rel mprotect_rel;
+    if (machine_type == EM_X86_64) {
+        mprotect_rel.r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
+    } else if (machine_type == EM_AARCH64) {
+        mprotect_rel.r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
+    } else {
+        CHECK(false);
+    }
+    mprotect_rel.r_offset = InitArrayOffset();
+    mprotect_rel.r_addend = array[0];
+    rels_.emplace_back(mprotect_rel);
     // for (size_t i = 0; i < array.size(); ++i) {
     //     size_t rel_index = orig_rel_size + i;
     //     CHECK(rel_index < rels_.size());
@@ -438,6 +454,8 @@ void Sold::CollectTLS() {
 
 // Collect .init_array and .fini_array
 void Sold::CollectArrays() {
+    CHECK(init_array_.empty());
+    init_array_.emplace_back(mprotect_offset_);
     for (auto iter = link_binaries_.rbegin(); iter != link_binaries_.rend(); ++iter) {
         ELFBinary* bin = *iter;
         uintptr_t offset = offsets_[bin];
