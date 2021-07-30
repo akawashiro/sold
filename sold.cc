@@ -563,7 +563,6 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
 
     int type = ELF_R_TYPE(rel->r_info);
     const uintptr_t addend = rel->r_addend;
-    // Elf_Rel newrel = *rel;
     std::vector<Elf_Rel> newrels;
 
     if (bin->IsVaddrInTLSData(rel->r_offset)) {
@@ -756,93 +755,121 @@ void Sold::RelocateSymbol_aarch64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t 
 
     int type = ELF_R_TYPE(rel->r_info);
     const uintptr_t addend = rel->r_addend;
-    Elf_Rel newrel = *rel;
+    std::vector<Elf_Rel> newrels;
+
     if (bin->IsVaddrInTLSData(rel->r_offset)) {
+        Elf_Rel newrel = *rel;
         const Elf_Phdr* tls = bin->tls();
         CHECK(tls);
         uintptr_t off = newrel.r_offset - tls->p_vaddr;
         off = RemapTLS("reloc", bin, off);
         newrel.r_offset = off + tls_offset_;
+        newrels.emplace_back(newrel);
     } else {
+        Elf_Rel newrel = *rel;
         newrel.r_offset += offset;
+        newrels.emplace_back(newrel);
+    }
+
+    if (bin->IsAddrInInitarray(rel->r_offset)) {
+        Elf_Rel newrel = *rel;
+        CHECK(bin_to_init_array_offset_.find(bin) != bin_to_init_array_offset_.end()) << SOLD_LOG_KEY(bin->filename());
+
+        newrel.r_offset -= bin->init_array_addr();
+        newrel.r_offset += bin_to_init_array_offset_[bin];
+        LOG(INFO) << SOLD_LOG_BITS(bin->init_array_addr()) << SOLD_LOG_BITS(bin_to_init_array_offset_[bin])
+                  << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend) << SOLD_LOG_BITS(offset);
+        newrels.emplace_back(newrel);
+    } else if (bin->IsAddrInFiniarray(rel->r_offset)) {
+        Elf_Rel newrel = *rel;
+        CHECK(bin_to_fini_array_offset_.find(bin) != bin_to_fini_array_offset_.end()) << SOLD_LOG_KEY(bin->filename());
+
+        newrel.r_offset -= bin->fini_array_addr();
+        newrel.r_offset += bin_to_fini_array_offset_[bin];
+        LOG(INFO) << SOLD_LOG_BITS(bin->fini_array_addr()) << SOLD_LOG_BITS(bin_to_fini_array_offset_[bin])
+                  << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend) << SOLD_LOG_BITS(offset);
+        newrels.emplace_back(newrel);
     }
 
     LOG(INFO) << "Relocate " << bin->Str(sym->st_name) << " at " << rel->r_offset;
 
-    // Even if we found a defined symbol in src_syms_, we cannot
-    // erase the relocation entry. The address needs to be fixed at
-    // runtime by ASLR function so we set RELATIVE to these resolved symbols.
-    switch (type) {
-        case R_AARCH64_RELATIVE: {
-            if (IsDefined(*sym)) {
-                LOG(WARNING) << "The symbol associated with R_AARCH64_RELATIVE is defined. Because this relocation type doesn't need any "
-                                "symbol, something wrong may have happened.";
+    for (auto newrel : newrels) {
+        // Even if we found a defined symbol in src_syms_, we cannot
+        // erase the relocation entry. The address needs to be fixed at
+        // runtime by ASLR function so we set RELATIVE to these resolved symbols.
+        switch (type) {
+            case R_AARCH64_RELATIVE: {
+                if (IsDefined(*sym)) {
+                    LOG(WARNING)
+                        << "The symbol associated with R_AARCH64_RELATIVE is defined. Because this relocation type doesn't need any "
+                           "symbol, something wrong may have happened.";
+                }
+                newrel.r_addend += offset;
+                break;
             }
-            newrel.r_addend += offset;
-            break;
-        }
 
-        case R_AARCH64_GLOB_DAT:
-        case R_AARCH64_JUMP_SLOT: {
-            uintptr_t val_or_index;
-            if (syms_.Resolve(bin->Str(sym->st_name), soname, version_name, val_or_index)) {
-                newrel.r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
-                newrel.r_addend = val_or_index;
-            } else {
-                newrel.r_info = ELF_R_INFO(val_or_index, type);
-            }
-            break;
-        }
-
-        case R_AARCH64_ABS64: {
-            uintptr_t val_or_index;
-            if (syms_.Resolve(bin->Str(sym->st_name), soname, version_name, val_or_index)) {
-                newrel.r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
-                newrel.r_addend += val_or_index;
-            } else {
-                newrel.r_info = ELF_R_INFO(val_or_index, type);
-            }
-            break;
-        }
-
-        case R_AARCH64_TLSDESC: {
-            const std::string name = bin->Str(sym->st_name);
-            if (name == "") {
-                LOG(INFO) << SOLD_LOG_KEY(name) << "R_AARCH64_TLSDESC in local dynamic";
-                uintptr_t index = syms_.ResolveCopy(name, soname, version_name);
-                newrel.r_info = ELF_R_INFO(index, type);
-                const bool is_bss = bin->IsOffsetInTLSBSS(newrel.r_addend);
-                if (is_bss) {
-                    LOG(INFO) << "R_AARCH64_TLSDESC" << SOLD_LOG_BITS(newrel.r_addend)
-                              << SOLD_LOG_BITS(tls_.data[tls_.bin_to_index[bin]].bss_offset - bin->tls()->p_filesz);
-                    newrel.r_addend += tls_.data[tls_.bin_to_index[bin]].bss_offset - bin->tls()->p_filesz;
+            case R_AARCH64_GLOB_DAT:
+            case R_AARCH64_JUMP_SLOT: {
+                uintptr_t val_or_index;
+                if (syms_.Resolve(bin->Str(sym->st_name), soname, version_name, val_or_index)) {
+                    newrel.r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
+                    newrel.r_addend = val_or_index;
                 } else {
-                    LOG(INFO) << "R_AARCH64_TLSDESC" << SOLD_LOG_BITS(newrel.r_addend)
-                              << SOLD_LOG_BITS(tls_.data[tls_.bin_to_index[bin]].file_offset);
-                    newrel.r_addend += tls_.data[tls_.bin_to_index[bin]].file_offset;
+                    newrel.r_info = ELF_R_INFO(val_or_index, type);
                 }
                 break;
-            } else {
-                LOG(INFO) << SOLD_LOG_KEY(name) << "R_AARCH64_TLSDESC in generic dynamic";
+            }
+
+            case R_AARCH64_ABS64: {
+                uintptr_t val_or_index;
+                if (syms_.Resolve(bin->Str(sym->st_name), soname, version_name, val_or_index)) {
+                    newrel.r_info = ELF_R_INFO(0, R_AARCH64_RELATIVE);
+                    newrel.r_addend += val_or_index;
+                } else {
+                    newrel.r_info = ELF_R_INFO(val_or_index, type);
+                }
+                break;
+            }
+
+            case R_AARCH64_TLSDESC: {
+                const std::string name = bin->Str(sym->st_name);
+                if (name == "") {
+                    LOG(INFO) << SOLD_LOG_KEY(name) << "R_AARCH64_TLSDESC in local dynamic";
+                    uintptr_t index = syms_.ResolveCopy(name, soname, version_name);
+                    newrel.r_info = ELF_R_INFO(index, type);
+                    const bool is_bss = bin->IsOffsetInTLSBSS(newrel.r_addend);
+                    if (is_bss) {
+                        LOG(INFO) << "R_AARCH64_TLSDESC" << SOLD_LOG_BITS(newrel.r_addend)
+                                  << SOLD_LOG_BITS(tls_.data[tls_.bin_to_index[bin]].bss_offset - bin->tls()->p_filesz);
+                        newrel.r_addend += tls_.data[tls_.bin_to_index[bin]].bss_offset - bin->tls()->p_filesz;
+                    } else {
+                        LOG(INFO) << "R_AARCH64_TLSDESC" << SOLD_LOG_BITS(newrel.r_addend)
+                                  << SOLD_LOG_BITS(tls_.data[tls_.bin_to_index[bin]].file_offset);
+                        newrel.r_addend += tls_.data[tls_.bin_to_index[bin]].file_offset;
+                    }
+                    break;
+                } else {
+                    LOG(INFO) << SOLD_LOG_KEY(name) << "R_AARCH64_TLSDESC in generic dynamic";
+                    uintptr_t index = syms_.ResolveCopy(name, soname, version_name);
+                    newrel.r_info = ELF_R_INFO(index, type);
+                    break;
+                }
+            }
+
+            case R_AARCH64_COPY: {
+                const std::string name = bin->Str(sym->st_name);
                 uintptr_t index = syms_.ResolveCopy(name, soname, version_name);
                 newrel.r_info = ELF_R_INFO(index, type);
                 break;
             }
+
+            default:
+                LOG(FATAL) << "Unknown relocation type: " << ShowRelocationType(type);
+                CHECK(false);
         }
 
-        case R_AARCH64_COPY: {
-            const std::string name = bin->Str(sym->st_name);
-            uintptr_t index = syms_.ResolveCopy(name, soname, version_name);
-            newrel.r_info = ELF_R_INFO(index, type);
-            break;
-        }
-
-        default:
-            LOG(FATAL) << "Unknown relocation type: " << ShowRelocationType(type);
-            CHECK(false);
+        rels_.push_back(newrel);
     }
-
-    rels_.push_back(newrel);
 }
 
 std::string Sold::ResolveRunPathVariables(const ELFBinary* binary, const std::string& runpath) {
