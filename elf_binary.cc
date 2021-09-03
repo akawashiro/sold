@@ -28,8 +28,8 @@
 
 #include "version_builder.h"
 
-ELFBinary::ELFBinary(const std::string& filename, int fd, char* head, size_t size)
-    : filename_(filename), fd_(fd), head_(head), size_(size) {
+ELFBinary::ELFBinary(const std::string& filename, int fd, char* head, size_t mapped_size, size_t filesize)
+    : filename_(filename), fd_(fd), head_(head), mapped_size_(mapped_size), filesize_(filesize) {
     ehdr_ = reinterpret_cast<Elf_Ehdr*>(head);
 
     CHECK_EQ(ehdr_->e_type, ET_DYN);
@@ -50,7 +50,7 @@ ELFBinary::ELFBinary(const std::string& filename, int fd, char* head, size_t siz
 }
 
 ELFBinary::~ELFBinary() {
-    munmap(head_, size_);
+    munmap(head_, mapped_size_);
     close(fd_);
 }
 
@@ -682,7 +682,7 @@ std::unique_ptr<ELFBinary> ReadELF(const std::string& filename) {
             // TODO(hamaji): Non 64bit ELF isn't supported yet.
             return nullptr;
         }
-        return std::make_unique<ELFBinary>(filename.c_str(), fd, p, mapped_size);
+        return std::make_unique<ELFBinary>(filename.c_str(), fd, p, mapped_size, size);
     }
     err(1, "unknown file format: %s", filename.c_str());
 }

@@ -25,7 +25,7 @@
 
 class ELFBinary {
 public:
-    ELFBinary(const std::string& filename, int fd, char* head, size_t size);
+    ELFBinary(const std::string& filename, int fd, char* head, size_t mapped_size, size_t filesize);
 
     ~ELFBinary();
 
@@ -53,7 +53,8 @@ public:
     const EHFrameHeader* eh_frame_header() const { return &eh_frame_header_; }
 
     const char* head() const { return head_; }
-    size_t size() const { return size_; }
+    size_t filesize() const { return filesize_; }
+    size_t mapped_size() const { return mapped_size_; }
 
     const std::string& name() const { return name_; }
 
@@ -109,7 +110,8 @@ private:
     const std::string filename_;
     int fd_;
     char* head_;
-    size_t size_;
+    size_t filesize_;
+    size_t mapped_size_;
 
     Elf_Ehdr* ehdr_{nullptr};
     std::vector<Elf_Phdr*> phdrs_;
