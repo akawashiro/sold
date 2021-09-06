@@ -22,6 +22,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <set>
 
 class ELFBinary {
 public:
@@ -45,7 +46,7 @@ public:
     const std::string& runpath() const { return runpath_; }
     const std::string& rpath() const { return rpath_; }
 
-    const Elf_Sym* symtab() const { return symtab_; }
+    Elf_Sym* symtab() const { return symtab_; }
     const Elf_Rel* rel() const { return rel_; }
     size_t num_rels() const { return num_rels_; }
     const Elf_Rel* plt_rel() const { return plt_rel_; }
@@ -76,6 +77,7 @@ public:
     bool IsOffsetInTLSData(uintptr_t offset) const;
     bool IsOffsetInTLSBSS(uintptr_t offset) const;
 
+    std::set<int> CollectSymbolsFromDynamic();
     void ReadDynSymtab(const std::map<std::string, std::string>& filename_to_soname);
 
     const char* Str(uintptr_t name) { return strtab_ + name; }

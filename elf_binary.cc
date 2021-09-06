@@ -148,10 +148,7 @@ std::set<int> CollectSymbolsFromElfHash(const std::string& name, Elf_Hash* hash)
 
 }  // namespace
 
-void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename_to_soname) {
-    CHECK(symtab_);
-    LOG(INFO) << "Read dynsymtab of " << name();
-
+std::set<int> ELFBinary::CollectSymbolsFromDynamic() {
     // Since we only rely on program headers and do not read section headers
     // at all, we do not know the exact size of .dynsym section. We collect
     // indices in .dynsym from both (GNU or ELF) hash and relocs.
@@ -167,6 +164,18 @@ void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename
     for (int idx : CollectSymbolsFromReloc(rel_, num_rels_)) indices.insert(idx);
     for (int idx : CollectSymbolsFromReloc(plt_rel_, num_plt_rels_)) indices.insert(idx);
 
+    return indices;
+}
+
+void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename_to_soname) {
+    CHECK(symtab_);
+    LOG(INFO) << "Read dynsymtab of " << name();
+
+    // Since we only rely on program headers and do not read section headers
+    // at all, we do not know the exact size of .dynsym section. We collect
+    // indices in .dynsym from both (GNU or ELF) hash and relocs.
+
+    std::set<int> indices = CollectSymbolsFromDynamic();
     std::set<std::tuple<std::string, std::string, std::string>> duplicate_check;
 
     for (int idx : indices) {
