@@ -47,11 +47,15 @@ public:
     const std::string& rpath() const { return rpath_; }
 
     Elf_Sym* symtab() const { return symtab_; }
+    Elf_Verneed* verneed() const { return verneed_; }
+    Elf_Versym* versym() const { return versym_; }
+    const Elf_Xword verneednum() const { return verneednum_; }
     const Elf_Rel* rel() const { return rel_; }
     size_t num_rels() const { return num_rels_; }
     const Elf_Rel* plt_rel() const { return plt_rel_; }
     size_t num_plt_rels() const { return num_plt_rels_; }
     const EHFrameHeader* eh_frame_header() const { return &eh_frame_header_; }
+    const char* strtab() const { return strtab_; }
 
     const char* head() const { return head_; }
     size_t filesize() const { return filesize_; }
