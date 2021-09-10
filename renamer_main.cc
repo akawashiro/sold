@@ -49,12 +49,14 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
     std::set<int> sym_indecies = input_binary->CollectSymbolsFromDynamic();
     CHECK_EQ(*sym_indecies.begin(), 0);                         // Check we collect all symbols
     CHECK_EQ(*sym_indecies.rbegin() + 1, sym_indecies.size());  // Check we collect all symbols
-    std::set<std::string> names;
+    LOG(INFO) << SOLD_LOG_KEY(sym_indecies.size());
+    std::vector<std::string> sym_names;
     for (int i : sym_indecies) {
         LOG(INFO) << SOLD_LOG_KEY(i);
         Elf_Sym* s = input_binary->symtab() + i;
         std::string n = input_binary->Str(s->st_name);
         strtab_builder.Add(n);
+        sym_names.emplace_back(n);
         s->st_name = strtab_builder.GetPos(n);
         LOG(INFO) << SOLD_LOG_KEY(n);
     }
@@ -118,20 +120,18 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
 
     // Calculate vaddrs
     strtab_builder.Freeze();
-    Elf_Addr strtab_vaddr = 0x5000;
+    Elf_Addr strtab_vaddr = 0;
+    for (const Elf_Phdr* pp : input_binary->phdrs()) {
+        Elf_Phdr p = *pp;
+        strtab_vaddr = std::max(strtab_vaddr, AlignNext(p.p_vaddr + p.p_memsz));
+    }
     Elf_Addr gnu_hash_vaddr = strtab_vaddr + strtab_builder.size();
+
     Elf_GnuHash gnu_hash;
     gnu_hash.nbuckets = 1;
     gnu_hash.symndx = 1;
     gnu_hash.maskwords = 1;
     gnu_hash.shift2 = 1;
-
-    // Calculate vaddr for the new strtab
-    Elf64_Addr strtab_vaddr = 0;
-    for (const Elf_Phdr* pp : input_binary->phdrs()) {
-        Elf_Phdr p = *pp;
-        strtab_vaddr = std::max(strtab_vaddr, AlignNext(p.p_vaddr + p.p_memsz));
-    }
 
     // Rewrite addresses of Phdrs
     for (const Elf_Phdr* pp : input_binary->phdrs()) {
@@ -142,9 +142,12 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
             CHECK_EQ(p.p_filesz % sizeof(Elf_Dyn), 0);
             LOG(INFO) << SOLD_LOG_BITS(p.p_offset);
 
-            auto update = [](Elf_Dyn* dyn) {
-                if (dyn->d_un.d_ptr < 0x1000) {
-                    dyn->d_un.d_ptr += sizeof(Elf_Phdr);
+            auto get_new_vaddr = [](Elf_Addr vaddr) {
+                // TODO(akawashiro): Fix here
+                if (vaddr < 0x1000) {
+                    return vaddr + sizeof(Elf_Phdr);
+                } else {
+                    return vaddr;
                 }
             };
 
@@ -158,7 +161,7 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_SYMTAB:
-                        update(dyn);
+                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_GNU_HASH:
@@ -166,24 +169,24 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_HASH:
-                        update(dyn);
+                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         CHECK(false) << "We do not support yet";
                         break;
                     case DT_RELA:
-                        update(dyn);
+                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_VERSYM:
-                        update(dyn);
+                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_VERNEED:
-                        update(dyn);
+                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_VERDEF:
-                        update(dyn);
+                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     default:
@@ -215,8 +218,8 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
         Write(fp, str_phdr);
     }
     Elf64_Addr gnu_hash_fileoffset = strtab_fileoffset + strtab_builder.size();
-    Elf_Addr remaining_pad_fileoffset = gnu_hash_fileoffset + (sizeof(uint32_t) * 4 + sizeof(Elf_Addr) +
-                                                               sizeof(uint32_t) * (1 + strtab_builder.strs().size() - gnu_hash.symndx));
+    Elf_Addr remaining_pad_fileoffset =
+        gnu_hash_fileoffset + (sizeof(uint32_t) * 4 + sizeof(Elf_Addr) + sizeof(uint32_t) * (1 + sym_names.size() - gnu_hash.symndx));
     Elf_Addr eof_fileoffset = strtab_fileoffset + 0x1000;  // TODO(akawashiro): 0x1000 is just a temporal value.
 
     // WriteBuf(fp, input_binary->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * input_binary->phdrs().size(),
@@ -244,9 +247,13 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
     uint32_t bucket = (sym_indecies.size() > gnu_hash.symndx) ? gnu_hash.symndx : 0;
     Write(fp, bucket);
 
-    for (size_t i = gnu_hash.symndx; i < strtab_builder.strs().size(); ++i) {
-        uint32_t h = CalcGnuHash(strtab_builder.strs()[i]) & ~1;
-        if (i == strtab_builder.strs().size() - 1) {
+    LOG(INFO) << SOLD_LOG_KEY(sym_names.size());
+    for (auto s : sym_names) {
+        LOG(INFO) << SOLD_LOG_KEY(s);
+    }
+    for (size_t i = gnu_hash.symndx; i < sym_names.size(); ++i) {
+        uint32_t h = CalcGnuHash(sym_names[i]) & ~1;
+        if (i == sym_names.size() - 1) {
             h |= 1;
         }
         Write(fp, h);
