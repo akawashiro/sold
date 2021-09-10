@@ -47,8 +47,11 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
 
     // Collect all names from symbols and rename them
     std::set<int> sym_indecies = input_binary->CollectSymbolsFromDynamic();
+    CHECK_EQ(*sym_indecies.begin(), 0);                         // Check we collect all symbols
+    CHECK_EQ(*sym_indecies.rbegin() + 1, sym_indecies.size());  // Check we collect all symbols
     std::set<std::string> names;
     for (int i : sym_indecies) {
+        LOG(INFO) << SOLD_LOG_KEY(i);
         Elf_Sym* s = input_binary->symtab() + i;
         std::string n = input_binary->Str(s->st_name);
         strtab_builder.Add(n);
@@ -113,11 +116,21 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
         }
     }
 
+    // Calculate vaddrs
+    strtab_builder.Freeze();
+    Elf_Addr strtab_vaddr = 0x5000;
+    Elf_Addr gnu_hash_vaddr = strtab_vaddr + strtab_builder.size();
+    Elf_GnuHash gnu_hash;
+    gnu_hash.nbuckets = 1;
+    gnu_hash.symndx = 1;
+    gnu_hash.maskwords = 1;
+    gnu_hash.shift2 = 1;
+
     // Calculate vaddr for the new strtab
-    Elf64_Addr str_vaddr = 0;
+    Elf64_Addr strtab_vaddr = 0;
     for (const Elf_Phdr* pp : input_binary->phdrs()) {
         Elf_Phdr p = *pp;
-        str_vaddr = std::max(str_vaddr, AlignNext(p.p_vaddr + p.p_memsz));
+        strtab_vaddr = std::max(strtab_vaddr, AlignNext(p.p_vaddr + p.p_memsz));
     }
 
     // Rewrite addresses of Phdrs
@@ -141,8 +154,7 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
                 LOG(INFO) << SOLD_LOG_BITS(dyn->d_tag) << SOLD_LOG_BITS(dyn);
                 switch (dyn->d_tag) {
                     case DT_STRTAB:
-                        // TODO(akawashiro): 0x5000 is a just temporal offset.
-                        dyn->d_un.d_ptr = 0x5000;
+                        dyn->d_un.d_ptr = strtab_vaddr;
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_SYMTAB:
@@ -150,12 +162,13 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_GNU_HASH:
-                        update(dyn);
+                        dyn->d_un.d_ptr = gnu_hash_vaddr;
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_HASH:
                         update(dyn);
                         LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
+                        CHECK(false) << "We do not support yet";
                         break;
                     case DT_RELA:
                         update(dyn);
@@ -187,20 +200,24 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
         Write(fp, p);
     }
 
-    Elf64_Addr str_fileoffset = AlignNext(input_binary->filesize(), 0x1000 - 1);
+    Elf64_Addr strtab_fileoffset = AlignNext(input_binary->filesize(), 0x1000 - 1);
     {
         Elf_Phdr str_phdr;
         LOG(INFO) << SOLD_LOG_BITS(input_binary->filesize()) << SOLD_LOG_BITS(AlignNext(input_binary->filesize(), 0x1000 - 1));
-        str_phdr.p_offset = str_fileoffset;
+        str_phdr.p_offset = strtab_fileoffset;
         str_phdr.p_flags = PF_R;
-        str_phdr.p_vaddr = str_vaddr;
-        str_phdr.p_paddr = str_vaddr;
+        str_phdr.p_vaddr = strtab_vaddr;
+        str_phdr.p_paddr = strtab_vaddr;
         str_phdr.p_memsz = 0x1000;
         str_phdr.p_filesz = 0x1000;
         str_phdr.p_type = PT_LOAD;
         str_phdr.p_align = 0x1000;
         Write(fp, str_phdr);
     }
+    Elf64_Addr gnu_hash_fileoffset = strtab_fileoffset + strtab_builder.size();
+    Elf_Addr remaining_pad_fileoffset = gnu_hash_fileoffset + (sizeof(uint32_t) * 4 + sizeof(Elf_Addr) +
+                                                               sizeof(uint32_t) * (1 + strtab_builder.strs().size() - gnu_hash.symndx));
+    Elf_Addr eof_fileoffset = strtab_fileoffset + 0x1000;  // TODO(akawashiro): 0x1000 is just a temporal value.
 
     // WriteBuf(fp, input_binary->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * input_binary->phdrs().size(),
     //          input_binary->filesize() - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * input_binary->phdrs().size()));
@@ -208,11 +225,36 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
     WriteBuf(fp, input_binary->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * input_binary->phdrs().size(),
              0x1000 - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * (input_binary->phdrs().size() + 1)));
     WriteBuf(fp, input_binary->head() + 0x1000, input_binary->filesize() - 0x1000);
-    EmitPad(fp, str_fileoffset);
+    EmitPad(fp, strtab_fileoffset);
 
+    // Emit strtab
+    CHECK(ftell(fp) == strtab_fileoffset);
     strtab_builder.Freeze();
     WriteBuf(fp, strtab_builder.data(), strtab_builder.size());
-    EmitPad(fp, str_fileoffset + 0x1000 - strtab_builder.size());
+
+    // Emit GnuHash
+    CHECK(ftell(fp) == gnu_hash_fileoffset);
+    Write(fp, gnu_hash.nbuckets);
+    Write(fp, gnu_hash.symndx);
+    Write(fp, gnu_hash.maskwords);
+    Write(fp, gnu_hash.shift2);
+    Elf_Addr bloom_filter = -1;
+    Write(fp, bloom_filter);
+    // If there is no symbols in gnu_hash, bucket must be 0.
+    uint32_t bucket = (sym_indecies.size() > gnu_hash.symndx) ? gnu_hash.symndx : 0;
+    Write(fp, bucket);
+
+    for (size_t i = gnu_hash.symndx; i < strtab_builder.strs().size(); ++i) {
+        uint32_t h = CalcGnuHash(strtab_builder.strs()[i]) & ~1;
+        if (i == strtab_builder.strs().size() - 1) {
+            h |= 1;
+        }
+        Write(fp, h);
+    }
+
+    // Emit pads
+    CHECK(ftell(fp) == remaining_pad_fileoffset);
+    EmitPad(fp, eof_fileoffset);
 }
 
 int main(int argc, char* argv[]) {
