@@ -97,7 +97,7 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
             Elf_Verneed* vn = input_binary->verneed();
             for (int i = 0; i < input_binary->verneednum(); ++i) {
                 LOG(INFO) << "Elf_Verneed: " << SOLD_LOG_KEY(vn->vn_version) << SOLD_LOG_KEY(vn->vn_cnt)
-                          << SOLD_LOG_KEY(input_binary->strtab() + vn->vn_file) << SOLD_LOG_KEY(vn->vn_aux) << SOLD_LOG_KEY(vn->vn_next);
+                          << SOLD_LOG_KEY(input_binary->Str(vn->vn_file)) << SOLD_LOG_KEY(vn->vn_aux) << SOLD_LOG_KEY(vn->vn_next);
                 vn->vn_file = strtab_builder.Add(input_binary->Str(vn->vn_file));
                 Elf_Vernaux* vna = (Elf_Vernaux*)((char*)vn + vn->vn_aux);
                 for (int j = 0; j < vn->vn_cnt; ++j) {
@@ -107,8 +107,7 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
 
                     if (vna->vna_other == input_binary->versym()[index]) {
                         LOG(INFO) << "Find Elf_Vernaux corresponds to " << input_binary->versym()[index]
-                                  << SOLD_LOG_KEY(input_binary->strtab() + vn->vn_file)
-                                  << SOLD_LOG_KEY(input_binary->strtab() + vna->vna_name);
+                                  << SOLD_LOG_KEY(input_binary->strtab() + vn->vn_file) << SOLD_LOG_KEY(input_binary->Str(vna->vna_name));
                     }
                     vna->vna_name = strtab_builder.Add(input_binary->Str(vna->vna_name));
 
