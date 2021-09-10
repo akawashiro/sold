@@ -247,10 +247,6 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
     uint32_t bucket = (sym_indecies.size() > gnu_hash.symndx) ? gnu_hash.symndx : 0;
     Write(fp, bucket);
 
-    LOG(INFO) << SOLD_LOG_KEY(sym_names.size());
-    for (auto s : sym_names) {
-        LOG(INFO) << SOLD_LOG_KEY(s);
-    }
     for (size_t i = gnu_hash.symndx; i < sym_names.size(); ++i) {
         uint32_t h = CalcGnuHash(sym_names[i]) & ~1;
         if (i == sym_names.size() - 1) {

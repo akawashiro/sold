@@ -1,4 +1,4 @@
-# ! /bin/bash -eux
+#! /bin/bash -eux
 
 cd build
 ninja
@@ -10,5 +10,3 @@ gcc -o use_hoge_for_rename tests/use_hoge_for_rename.c libhoge_for_rename.so
 GLOG_logtostderr=1 ./build/renamer libhoge_for_rename_original.so --output libhoge_for_rename_renamed.so
 ln -sf libhoge_for_rename_renamed.so libhoge_for_rename.so
 ./use_hoge_for_rename
-echo $?
-echo This should be 3: $?
