@@ -31,14 +31,14 @@ std::map<std::string, std::string> ReadMappingFile(std::string file) {
     return res;
 }
 
-void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::map<std::string, std::string> mapping) {
+void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::string, std::string> mapping) {
     StrtabBuilder strtab_builder(mapping);
 
     FILE* fp = fopen(outfile.c_str(), "wb");
 
     // Emit the new Ehdr
     {
-        Elf_Ehdr e = *input_binary->ehdr();
+        Elf_Ehdr e = *bin->ehdr();
         e.e_shstrndx = 0;
         e.e_shoff = 0;
         e.e_shnum = 0;
@@ -47,15 +47,15 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
     }
 
     // Collect all names from symbols and rename them
-    std::set<int> sym_indecies = input_binary->CollectSymbolsFromDynamic();
+    std::set<int> sym_indecies = bin->CollectSymbolsFromDynamic();
     CHECK_EQ(*sym_indecies.begin(), 0);                         // Check we collect all symbols
     CHECK_EQ(*sym_indecies.rbegin() + 1, sym_indecies.size());  // Check we collect all symbols
     LOG(INFO) << SOLD_LOG_KEY(sym_indecies.size());
     std::vector<std::string> sym_names;
     for (int i : sym_indecies) {
         LOG(INFO) << SOLD_LOG_KEY(i);
-        Elf_Sym* s = input_binary->symtab() + i;
-        std::string n = input_binary->Str(s->st_name);
+        Elf_Sym* s = bin->symtab() + i;
+        std::string n = bin->Str(s->st_name);
         strtab_builder.Add(n);
         sym_names.emplace_back(n);
         s->st_name = strtab_builder.GetPos(n);
@@ -63,7 +63,7 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
     }
 
     // Rewrite strings in dynamic
-    for (const Elf_Phdr* pp : input_binary->phdrs()) {
+    for (const Elf_Phdr* pp : bin->phdrs()) {
         Elf_Phdr p = *pp;
         LOG(INFO) << SOLD_LOG_BITS(p.p_filesz) << SOLD_LOG_BITS(p.p_type) << SOLD_LOG_BITS(p.p_offset);
 
@@ -72,16 +72,15 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
             LOG(INFO) << SOLD_LOG_BITS(p.p_offset);
 
             for (size_t i = 0; i < p.p_filesz / sizeof(Elf_Dyn); ++i) {
-                Elf_Dyn* dyn =
-                    const_cast<Elf_Dyn*>(reinterpret_cast<const Elf_Dyn*>(input_binary->head() + p.p_offset + sizeof(Elf_Dyn) * i));
+                Elf_Dyn* dyn = const_cast<Elf_Dyn*>(reinterpret_cast<const Elf_Dyn*>(bin->head() + p.p_offset + sizeof(Elf_Dyn) * i));
                 LOG(INFO) << SOLD_LOG_BITS(dyn->d_tag) << SOLD_LOG_BITS(dyn);
                 switch (dyn->d_tag) {
                     case DT_NEEDED:
-                        dyn->d_un.d_val = strtab_builder.Add(input_binary->Str(dyn->d_un.d_val));
+                        dyn->d_un.d_val = strtab_builder.Add(bin->Str(dyn->d_un.d_val));
                         LOG(INFO) << "Rewrite name of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_SONAME:
-                        dyn->d_un.d_val = strtab_builder.Add(input_binary->Str(dyn->d_un.d_val));
+                        dyn->d_un.d_val = strtab_builder.Add(bin->Str(dyn->d_un.d_val));
                         LOG(INFO) << "Rewrite name of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     default:
@@ -93,23 +92,22 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
 
     // Rewrite strings in version information
     for (int index : sym_indecies) {
-        if (input_binary->verneed()) {
-            Elf_Verneed* vn = input_binary->verneed();
-            for (int i = 0; i < input_binary->verneednum(); ++i) {
+        if (bin->verneed() && bin->versym() && !is_special_ver_ndx(bin->versym()[index])) {
+            Elf_Verneed* vn = bin->verneed();
+            for (int i = 0; i < bin->verneednum(); ++i) {
                 LOG(INFO) << "Elf_Verneed: " << SOLD_LOG_KEY(vn->vn_version) << SOLD_LOG_KEY(vn->vn_cnt)
-                          << SOLD_LOG_KEY(input_binary->Str(vn->vn_file)) << SOLD_LOG_KEY(vn->vn_aux) << SOLD_LOG_KEY(vn->vn_next);
-                vn->vn_file = strtab_builder.Add(input_binary->Str(vn->vn_file));
+                          << SOLD_LOG_KEY(bin->Str(vn->vn_file)) << SOLD_LOG_KEY(vn->vn_aux) << SOLD_LOG_KEY(vn->vn_next);
+                vn->vn_file = strtab_builder.Add(bin->Str(vn->vn_file));
                 Elf_Vernaux* vna = (Elf_Vernaux*)((char*)vn + vn->vn_aux);
                 for (int j = 0; j < vn->vn_cnt; ++j) {
                     LOG(INFO) << "Elf_Vernaux: " << SOLD_LOG_KEY(vna->vna_hash) << SOLD_LOG_KEY(vna->vna_flags)
-                              << SOLD_LOG_KEY(vna->vna_other) << SOLD_LOG_KEY(input_binary->strtab() + vna->vna_name)
-                              << SOLD_LOG_KEY(vna->vna_next);
+                              << SOLD_LOG_KEY(vna->vna_other) << SOLD_LOG_KEY(bin->strtab() + vna->vna_name) << SOLD_LOG_KEY(vna->vna_next);
 
-                    if (vna->vna_other == input_binary->versym()[index]) {
-                        LOG(INFO) << "Find Elf_Vernaux corresponds to " << input_binary->versym()[index]
-                                  << SOLD_LOG_KEY(input_binary->strtab() + vn->vn_file) << SOLD_LOG_KEY(input_binary->Str(vna->vna_name));
+                    if (vna->vna_other == bin->versym()[index]) {
+                        LOG(INFO) << "Find Elf_Vernaux corresponds to " << bin->versym()[index] << SOLD_LOG_KEY(bin->strtab() + vn->vn_file)
+                                  << SOLD_LOG_KEY(bin->Str(vna->vna_name));
                     }
-                    vna->vna_name = strtab_builder.Add(input_binary->Str(vna->vna_name));
+                    vna->vna_name = strtab_builder.Add(bin->Str(vna->vna_name));
 
                     vna = (Elf_Vernaux*)((char*)vna + vna->vna_next);
                 }
@@ -121,7 +119,7 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
     // Calculate vaddrs
     strtab_builder.Freeze();
     Elf_Addr strtab_vaddr = 0;
-    for (const Elf_Phdr* pp : input_binary->phdrs()) {
+    for (const Elf_Phdr* pp : bin->phdrs()) {
         Elf_Phdr p = *pp;
         strtab_vaddr = std::max(strtab_vaddr, AlignNext(p.p_vaddr + p.p_memsz));
     }
@@ -134,7 +132,7 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
     gnu_hash.shift2 = 1;
 
     // Rewrite addresses of Phdrs
-    for (const Elf_Phdr* pp : input_binary->phdrs()) {
+    for (const Elf_Phdr* pp : bin->phdrs()) {
         Elf_Phdr p = *pp;
         LOG(INFO) << SOLD_LOG_BITS(p.p_filesz) << SOLD_LOG_BITS(p.p_type) << SOLD_LOG_BITS(p.p_offset);
 
@@ -152,8 +150,7 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
             };
 
             for (size_t i = 0; i < p.p_filesz / sizeof(Elf_Dyn); ++i) {
-                Elf_Dyn* dyn =
-                    const_cast<Elf_Dyn*>(reinterpret_cast<const Elf_Dyn*>(input_binary->head() + p.p_offset + sizeof(Elf_Dyn) * i));
+                Elf_Dyn* dyn = const_cast<Elf_Dyn*>(reinterpret_cast<const Elf_Dyn*>(bin->head() + p.p_offset + sizeof(Elf_Dyn) * i));
                 LOG(INFO) << SOLD_LOG_BITS(dyn->d_tag) << SOLD_LOG_BITS(dyn);
                 switch (dyn->d_tag) {
                     case DT_STRTAB:
@@ -203,10 +200,10 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
         Write(fp, p);
     }
 
-    Elf64_Addr strtab_fileoffset = AlignNext(input_binary->filesize(), 0x1000 - 1);
+    Elf64_Addr strtab_fileoffset = AlignNext(bin->filesize(), 0x1000 - 1);
     {
         Elf_Phdr str_phdr;
-        LOG(INFO) << SOLD_LOG_BITS(input_binary->filesize()) << SOLD_LOG_BITS(AlignNext(input_binary->filesize(), 0x1000 - 1));
+        LOG(INFO) << SOLD_LOG_BITS(bin->filesize()) << SOLD_LOG_BITS(AlignNext(bin->filesize(), 0x1000 - 1));
         str_phdr.p_offset = strtab_fileoffset;
         str_phdr.p_flags = PF_R;
         str_phdr.p_vaddr = strtab_vaddr;
@@ -222,12 +219,12 @@ void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::m
         gnu_hash_fileoffset + (sizeof(uint32_t) * 4 + sizeof(Elf_Addr) + sizeof(uint32_t) * (1 + sym_names.size() - gnu_hash.symndx));
     Elf_Addr eof_fileoffset = strtab_fileoffset + 0x1000;  // TODO(akawashiro): 0x1000 is just a temporal value.
 
-    // WriteBuf(fp, input_binary->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * input_binary->phdrs().size(),
-    //          input_binary->filesize() - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * input_binary->phdrs().size()));
+    // WriteBuf(fp, bin->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size(),
+    //          bin->filesize() - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size()));
 
-    WriteBuf(fp, input_binary->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * input_binary->phdrs().size(),
-             0x1000 - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * (input_binary->phdrs().size() + 1)));
-    WriteBuf(fp, input_binary->head() + 0x1000, input_binary->filesize() - 0x1000);
+    WriteBuf(fp, bin->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size(),
+             0x1000 - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * (bin->phdrs().size() + 1)));
+    WriteBuf(fp, bin->head() + 0x1000, bin->filesize() - 0x1000);
     EmitPad(fp, strtab_fileoffset);
 
     // Emit strtab
@@ -295,9 +292,9 @@ int main(int argc, char* argv[]) {
     }
 
     std::map<std::string, std::string> mapping;
-    if (!rename_mapping_file.empty()) {
-        mapping = ReadMappingFile(rename_mapping_file);
-    }
+    // if (!rename_mapping_file.empty()) {
+    //     mapping = ReadMappingFile(rename_mapping_file);
+    // }
 
     auto main_binary = ReadELF(input);
     Rename(std::move(main_binary), output, mapping);
