@@ -19,19 +19,20 @@ std::map<std::string, std::string> ReadMappingFile(std::string file) {
         if (!(iss >> from >> to)) {
             CHECK(false) << "Cannot parse the mapping file";
         }
-        if (froms.insert(from).second) {
+        if (!froms.insert(from).second) {
             CHECK(false) << from << " is duplicated.";
         }
-        if (tos.insert(to).second) {
+        if (!tos.insert(to).second) {
             CHECK(false) << to << " is duplicated.";
         }
         res[from] = to;
     }
+    LOG(INFO) << res.size();
     return res;
 }
 
 void Rename(std::unique_ptr<ELFBinary> input_binary, std::string outfile, std::map<std::string, std::string> mapping) {
-    StrtabBuilder strtab_builder;
+    StrtabBuilder strtab_builder(mapping);
 
     FILE* fp = fopen(outfile.c_str(), "wb");
 
@@ -264,20 +265,20 @@ int main(int argc, char* argv[]) {
     google::InitGoogleLogging(argv[0]);
 
     static option long_options[] = {
-        {"rewrite-mapping-file", required_argument, nullptr, 1},
+        {"rename-mapping-file", required_argument, nullptr, 1},
         {"output", required_argument, nullptr, 'o'},
         {0, 0, 0, 0},
     };
 
     std::string input;
     std::string output;
-    std::string rewrite_mapping_file;
+    std::string rename_mapping_file;
 
     int opt;
     while ((opt = getopt_long(argc, argv, "l:", long_options, nullptr)) != -1) {
         switch (opt) {
             case 1:
-                rewrite_mapping_file = optarg;
+                rename_mapping_file = optarg;
                 break;
             case 'o':
                 output = optarg;
@@ -294,6 +295,11 @@ int main(int argc, char* argv[]) {
         output = input + ".renamed";
     }
 
+    std::map<std::string, std::string> mapping;
+    if (!rename_mapping_file.empty()) {
+        mapping = ReadMappingFile(rename_mapping_file);
+    }
+
     auto main_binary = ReadELF(input);
-    Rename(std::move(main_binary), output, {});
+    Rename(std::move(main_binary), output, mapping);
 }
