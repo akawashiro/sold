@@ -53,39 +53,35 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
     LOG(INFO) << SOLD_LOG_KEY(sym_indecies.size());
     std::vector<std::string> sym_names;
     for (int i : sym_indecies) {
-        LOG(INFO) << SOLD_LOG_KEY(i);
         Elf_Sym* s = bin->symtab() + i;
         std::string n = bin->Str(s->st_name);
         strtab_builder.Add(n);
         if (mapping.find(n) != mapping.end()) {
             sym_names.emplace_back(mapping[n]);
+            LOG(INFO) << "rename from " << SOLD_LOG_KEY(n) << SOLD_LOG_KEY(mapping[n]);
         } else {
             sym_names.emplace_back(n);
         }
         s->st_name = strtab_builder.GetPos(n);
-        LOG(INFO) << SOLD_LOG_KEY(n);
     }
+    CHECK_EQ(std::set<std::string>(sym_names.begin(), sym_names.end()).size(), sym_names.size())
+        << "There is a duplicated name in the renamed symbols";
 
     // Rewrite strings in dynamic
     for (const Elf_Phdr* pp : bin->phdrs()) {
         Elf_Phdr p = *pp;
-        LOG(INFO) << SOLD_LOG_BITS(p.p_filesz) << SOLD_LOG_BITS(p.p_type) << SOLD_LOG_BITS(p.p_offset);
-
         if (p.p_type == PT_DYNAMIC) {
             CHECK_EQ(p.p_filesz % sizeof(Elf_Dyn), 0);
-            LOG(INFO) << SOLD_LOG_BITS(p.p_offset);
-
             for (size_t i = 0; i < p.p_filesz / sizeof(Elf_Dyn); ++i) {
                 Elf_Dyn* dyn = const_cast<Elf_Dyn*>(reinterpret_cast<const Elf_Dyn*>(bin->head() + p.p_offset + sizeof(Elf_Dyn) * i));
-                LOG(INFO) << SOLD_LOG_BITS(dyn->d_tag) << SOLD_LOG_BITS(dyn);
                 switch (dyn->d_tag) {
                     case DT_NEEDED:
+                        LOG(INFO) << "Rewrite " << ShowDynamicEntryType(DT_NEEDED);
                         dyn->d_un.d_val = strtab_builder.Add(bin->Str(dyn->d_un.d_val));
-                        LOG(INFO) << "Rewrite name of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_SONAME:
+                        LOG(INFO) << "Rewrite " << ShowDynamicEntryType(DT_SONAME);
                         dyn->d_un.d_val = strtab_builder.Add(bin->Str(dyn->d_un.d_val));
-                        LOG(INFO) << "Rewrite name of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     default:
                         break;
@@ -106,11 +102,6 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
                 for (int j = 0; j < vn->vn_cnt; ++j) {
                     LOG(INFO) << "Elf_Vernaux: " << SOLD_LOG_KEY(vna->vna_hash) << SOLD_LOG_KEY(vna->vna_flags)
                               << SOLD_LOG_KEY(vna->vna_other) << SOLD_LOG_KEY(bin->strtab() + vna->vna_name) << SOLD_LOG_KEY(vna->vna_next);
-
-                    if (vna->vna_other == bin->versym()[index]) {
-                        LOG(INFO) << "Find Elf_Vernaux corresponds to " << bin->versym()[index] << SOLD_LOG_KEY(bin->strtab() + vn->vn_file)
-                                  << SOLD_LOG_KEY(bin->Str(vna->vna_name));
-                    }
                     vna->vna_name = strtab_builder.Add(bin->Str(vna->vna_name));
 
                     vna = (Elf_Vernaux*)((char*)vna + vna->vna_next);
@@ -138,12 +129,8 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
     // Rewrite addresses of Phdrs
     for (const Elf_Phdr* pp : bin->phdrs()) {
         Elf_Phdr p = *pp;
-        LOG(INFO) << SOLD_LOG_BITS(p.p_filesz) << SOLD_LOG_BITS(p.p_type) << SOLD_LOG_BITS(p.p_offset);
-
         if (p.p_type == PT_DYNAMIC) {
             CHECK_EQ(p.p_filesz % sizeof(Elf_Dyn), 0);
-            LOG(INFO) << SOLD_LOG_BITS(p.p_offset);
-
             auto get_new_vaddr = [](Elf_Addr vaddr) {
                 // TODO(akawashiro): Fix here
                 if (vaddr < 0x1000) {
@@ -155,40 +142,30 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
 
             for (size_t i = 0; i < p.p_filesz / sizeof(Elf_Dyn); ++i) {
                 Elf_Dyn* dyn = const_cast<Elf_Dyn*>(reinterpret_cast<const Elf_Dyn*>(bin->head() + p.p_offset + sizeof(Elf_Dyn) * i));
-                LOG(INFO) << SOLD_LOG_BITS(dyn->d_tag) << SOLD_LOG_BITS(dyn);
                 switch (dyn->d_tag) {
                     case DT_STRTAB:
                         dyn->d_un.d_ptr = strtab_vaddr;
-                        LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_SYMTAB:
                         dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
-                        LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_GNU_HASH:
                         dyn->d_un.d_ptr = gnu_hash_vaddr;
-                        LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_HASH:
-                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
-                        LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
-                        CHECK(false) << "We do not support yet";
+                        LOG(FATAL) << "We do not support" << ShowDynamicEntryType(DT_HASH);
                         break;
                     case DT_RELA:
                         dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
-                        LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_VERSYM:
                         dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
-                        LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_VERNEED:
                         dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
-                        LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     case DT_VERDEF:
                         dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
-                        LOG(INFO) << "Rewrite offset of " << ShowDynamicEntryType(dyn->d_tag);
                         break;
                     default:
                         break;
@@ -204,24 +181,25 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
         Write(fp, p);
     }
 
-    Elf64_Addr strtab_fileoffset = AlignNext(bin->filesize(), 0x1000 - 1);
+    Elf_Addr strtab_fileoffset = AlignNext(bin->filesize());
+    Elf_Addr gnu_hash_fileoffset = strtab_fileoffset + strtab_builder.size();
+    Elf_Addr gnu_hash_filesize = (sizeof(uint32_t) * 4 + sizeof(Elf_Addr) + sizeof(uint32_t) * (1 + sym_names.size() - gnu_hash.symndx));
+    Elf_Addr remaining_pad_fileoffset = gnu_hash_fileoffset + gnu_hash_filesize;
+    Elf_Addr strs_size = AlignNext(strtab_builder.size() + gnu_hash_filesize);  // Sum of dynstrtab and hashes
+    Elf_Addr eof_fileoffset = strtab_fileoffset + strs_size;
     {
         Elf_Phdr str_phdr;
-        LOG(INFO) << SOLD_LOG_BITS(bin->filesize()) << SOLD_LOG_BITS(AlignNext(bin->filesize(), 0x1000 - 1));
+        LOG(INFO) << SOLD_LOG_BITS(bin->filesize()) << SOLD_LOG_BITS(AlignNext(bin->filesize()));
         str_phdr.p_offset = strtab_fileoffset;
         str_phdr.p_flags = PF_R;
         str_phdr.p_vaddr = strtab_vaddr;
         str_phdr.p_paddr = strtab_vaddr;
-        str_phdr.p_memsz = 0x1000;
-        str_phdr.p_filesz = 0x1000;
+        str_phdr.p_memsz = strs_size;
+        str_phdr.p_filesz = strs_size;
         str_phdr.p_type = PT_LOAD;
         str_phdr.p_align = 0x1000;
         Write(fp, str_phdr);
     }
-    Elf64_Addr gnu_hash_fileoffset = strtab_fileoffset + strtab_builder.size();
-    Elf_Addr remaining_pad_fileoffset =
-        gnu_hash_fileoffset + (sizeof(uint32_t) * 4 + sizeof(Elf_Addr) + sizeof(uint32_t) * (1 + sym_names.size() - gnu_hash.symndx));
-    Elf_Addr eof_fileoffset = strtab_fileoffset + 0x1000;  // TODO(akawashiro): 0x1000 is just a temporal value.
 
     // WriteBuf(fp, bin->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size(),
     //          bin->filesize() - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size()));
