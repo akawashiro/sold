@@ -57,7 +57,11 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
         Elf_Sym* s = bin->symtab() + i;
         std::string n = bin->Str(s->st_name);
         strtab_builder.Add(n);
-        sym_names.emplace_back(n);
+        if (mapping.find(n) != mapping.end()) {
+            sym_names.emplace_back(mapping[n]);
+        } else {
+            sym_names.emplace_back(n);
+        }
         s->st_name = strtab_builder.GetPos(n);
         LOG(INFO) << SOLD_LOG_KEY(n);
     }
@@ -292,9 +296,9 @@ int main(int argc, char* argv[]) {
     }
 
     std::map<std::string, std::string> mapping;
-    // if (!rename_mapping_file.empty()) {
-    //     mapping = ReadMappingFile(rename_mapping_file);
-    // }
+    if (!rename_mapping_file.empty()) {
+        mapping = ReadMappingFile(rename_mapping_file);
+    }
 
     auto main_binary = ReadELF(input);
     Rename(std::move(main_binary), output, mapping);
