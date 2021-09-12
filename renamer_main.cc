@@ -8,7 +8,25 @@
 #include "strtab_builder.h"
 #include "utils.h"
 
+// You can choose a method to insert Elf_Phdr for strtab and gnu_hash.
+//
+// kPT_NOTE utilizes an existing Elf_Phdr of PT_NOTE. I recommend you use this
+// method first.
+//
+// kPadding inserts a new Elf_Phdr just after existing Elf_Phdrs. This one does
+// not work well if there aren't enough paddings (i.e., 56byte =
+// sizeof(Elf64_Phdr)).
 enum class PhdrInsertStrategy { kPT_NOTE, kPadding };
+
+PhdrInsertStrategy PhdrInsertStrategyFromString(std::string str) {
+    if (str == "PT_NOTE") {
+        return PhdrInsertStrategy::kPT_NOTE;
+    } else if (str == "padding") {
+        return PhdrInsertStrategy::kPadding;
+    } else {
+        LOG(FATAL) << str << " is not legitimate as PhdrInsertStrategy";
+    }
+}
 
 std::map<std::string, std::string> ReadMappingFile(std::string file) {
     std::string line;
@@ -33,11 +51,9 @@ std::map<std::string, std::string> ReadMappingFile(std::string file) {
     return res;
 }
 
-void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::string, std::string> mapping) {
-    const PhdrInsertStrategy phdr_insert_strategy = PhdrInsertStrategy::kPT_NOTE;
-
+void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::string, std::string> mapping,
+            const PhdrInsertStrategy phdr_insert_strategy) {
     StrtabBuilder strtab_builder(mapping);
-
     FILE* fp = fopen(outfile.c_str(), "wb");
 
     // Emit the new Ehdr
@@ -52,9 +68,11 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
 
     // Collect all names from symbols and rename them
     std::set<int> sym_indecies = bin->CollectSymbolsFromDynamic();
-    CHECK_EQ(*sym_indecies.begin(), 0);                         // Check we collect all symbols
-    CHECK_EQ(*sym_indecies.rbegin() + 1, sym_indecies.size());  // Check we collect all symbols
-    LOG(INFO) << SOLD_LOG_KEY(sym_indecies.size());
+
+    // Check we collect all symbols
+    CHECK_EQ(*sym_indecies.begin(), 0);
+    CHECK_EQ(*sym_indecies.rbegin() + 1, sym_indecies.size());
+
     std::vector<std::string> sym_names;
     for (int i : sym_indecies) {
         Elf_Sym* s = bin->symtab() + i;
@@ -242,9 +260,6 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
         }
     }
 
-    // WriteBuf(fp, bin->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size(),
-    //          bin->filesize() - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size()));
-
     if (phdr_insert_strategy == PhdrInsertStrategy::kPadding) {
         WriteBuf(fp, bin->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size(),
                  0x1000 - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * (bin->phdrs().size() + 1)));
@@ -285,10 +300,22 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
     EmitPad(fp, eof_fileoffset);
 }
 
+void print_help(std::ostream& os) {
+    os << R"(usage: renamer [option] [input]
+Options:
+-h, --help                Show this help message and exit
+-o, --output OUTPUT       Specify the ELF file to output
+--rename-mapping-file     Space separated lines to specify mapping
+--phdr-insert-strategy    Strategy to insert new Elf_Phdr. "PT_NOTE" or "padding"
+)" << std::endl;
+}
+
 int main(int argc, char* argv[]) {
     google::InitGoogleLogging(argv[0]);
 
     static option long_options[] = {
+        {"help", no_argument, nullptr, 'h'},
+        {"phdr-insert-strategy", required_argument, nullptr, 2},
         {"rename-mapping-file", required_argument, nullptr, 1},
         {"output", required_argument, nullptr, 'o'},
         {0, 0, 0, 0},
@@ -297,6 +324,7 @@ int main(int argc, char* argv[]) {
     std::string input;
     std::string output;
     std::string rename_mapping_file;
+    std::string phdr_insert_strategy = "PT_NOTE";
 
     int opt;
     while ((opt = getopt_long(argc, argv, "l:", long_options, nullptr)) != -1) {
@@ -304,9 +332,15 @@ int main(int argc, char* argv[]) {
             case 1:
                 rename_mapping_file = optarg;
                 break;
+            case 2:
+                phdr_insert_strategy = optarg;
+                break;
             case 'o':
                 output = optarg;
                 break;
+            case 'h':
+                print_help(std::cout);
+                return 0;
             default:
                 CHECK(false);
                 break;
@@ -325,5 +359,5 @@ int main(int argc, char* argv[]) {
     }
 
     auto main_binary = ReadELF(input);
-    Rename(std::move(main_binary), output, mapping);
+    Rename(std::move(main_binary), output, mapping, PhdrInsertStrategyFromString(phdr_insert_strategy));
 }
