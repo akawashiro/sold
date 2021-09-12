@@ -8,6 +8,8 @@
 #include "strtab_builder.h"
 #include "utils.h"
 
+enum class PhdrInsertStrategy { kPT_NOTE, kPadding };
+
 std::map<std::string, std::string> ReadMappingFile(std::string file) {
     std::string line;
     std::set<std::string> froms, tos;
@@ -32,6 +34,8 @@ std::map<std::string, std::string> ReadMappingFile(std::string file) {
 }
 
 void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::string, std::string> mapping) {
+    const PhdrInsertStrategy phdr_insert_strategy = PhdrInsertStrategy::kPT_NOTE;
+
     StrtabBuilder strtab_builder(mapping);
 
     FILE* fp = fopen(outfile.c_str(), "wb");
@@ -42,7 +46,7 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
         e.e_shstrndx = 0;
         e.e_shoff = 0;
         e.e_shnum = 0;
-        e.e_phnum++;
+        if (phdr_insert_strategy == PhdrInsertStrategy::kPadding) e.e_phnum++;
         Write(fp, e);
     }
 
@@ -114,9 +118,8 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
     // Calculate vaddrs
     strtab_builder.Freeze();
     Elf_Addr strtab_vaddr = 0;
-    for (const Elf_Phdr* pp : bin->phdrs()) {
-        Elf_Phdr p = *pp;
-        strtab_vaddr = std::max(strtab_vaddr, AlignNext(p.p_vaddr + p.p_memsz));
+    for (const Elf_Phdr* p : bin->phdrs()) {
+        strtab_vaddr = std::max(strtab_vaddr, AlignNext(p->p_vaddr + p->p_memsz));
     }
     Elf_Addr gnu_hash_vaddr = strtab_vaddr + strtab_builder.size();
 
@@ -126,87 +129,130 @@ void Rename(std::unique_ptr<ELFBinary> bin, std::string outfile, std::map<std::s
     gnu_hash.maskwords = 1;
     gnu_hash.shift2 = 1;
 
-    // Rewrite addresses of Phdrs
-    for (const Elf_Phdr* pp : bin->phdrs()) {
-        Elf_Phdr p = *pp;
-        if (p.p_type == PT_DYNAMIC) {
-            CHECK_EQ(p.p_filesz % sizeof(Elf_Dyn), 0);
-            auto get_new_vaddr = [](Elf_Addr vaddr) {
-                // TODO(akawashiro): Fix here
-                if (vaddr < 0x1000) {
-                    return vaddr + sizeof(Elf_Phdr);
-                } else {
-                    return vaddr;
-                }
-            };
-
-            for (size_t i = 0; i < p.p_filesz / sizeof(Elf_Dyn); ++i) {
-                Elf_Dyn* dyn = const_cast<Elf_Dyn*>(reinterpret_cast<const Elf_Dyn*>(bin->head() + p.p_offset + sizeof(Elf_Dyn) * i));
-                switch (dyn->d_tag) {
-                    case DT_STRTAB:
-                        dyn->d_un.d_ptr = strtab_vaddr;
-                        break;
-                    case DT_SYMTAB:
-                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
-                        break;
-                    case DT_GNU_HASH:
-                        dyn->d_un.d_ptr = gnu_hash_vaddr;
-                        break;
-                    case DT_HASH:
-                        LOG(FATAL) << "We do not support" << ShowDynamicEntryType(DT_HASH);
-                        break;
-                    case DT_RELA:
-                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
-                        break;
-                    case DT_VERSYM:
-                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
-                        break;
-                    case DT_VERNEED:
-                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
-                        break;
-                    case DT_VERDEF:
-                        dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-
-        // TODO(akawashiro): This is super dirty hack!!
-        if (p.p_offset == 0) {
-            p.p_filesz += sizeof(Elf_Phdr);
-            p.p_memsz += sizeof(Elf_Phdr);
-        }
-        Write(fp, p);
-    }
-
     Elf_Addr strtab_fileoffset = AlignNext(bin->filesize());
     Elf_Addr gnu_hash_fileoffset = strtab_fileoffset + strtab_builder.size();
     Elf_Addr gnu_hash_filesize = (sizeof(uint32_t) * 4 + sizeof(Elf_Addr) + sizeof(uint32_t) * (1 + sym_names.size() - gnu_hash.symndx));
     Elf_Addr remaining_pad_fileoffset = gnu_hash_fileoffset + gnu_hash_filesize;
     Elf_Addr strs_size = AlignNext(strtab_builder.size() + gnu_hash_filesize);  // Sum of dynstrtab and hashes
     Elf_Addr eof_fileoffset = strtab_fileoffset + strs_size;
-    {
-        Elf_Phdr str_phdr;
-        LOG(INFO) << SOLD_LOG_BITS(bin->filesize()) << SOLD_LOG_BITS(AlignNext(bin->filesize()));
-        str_phdr.p_offset = strtab_fileoffset;
-        str_phdr.p_flags = PF_R;
-        str_phdr.p_vaddr = strtab_vaddr;
-        str_phdr.p_paddr = strtab_vaddr;
-        str_phdr.p_memsz = strs_size;
-        str_phdr.p_filesz = strs_size;
-        str_phdr.p_type = PT_LOAD;
-        str_phdr.p_align = 0x1000;
+
+    // Construct Phdr for new strs
+    Elf_Phdr str_phdr;
+    str_phdr.p_offset = strtab_fileoffset;
+    str_phdr.p_flags = PF_R;
+    str_phdr.p_vaddr = strtab_vaddr;
+    str_phdr.p_paddr = strtab_vaddr;
+    str_phdr.p_memsz = strs_size;
+    str_phdr.p_filesz = strs_size;
+    str_phdr.p_type = PT_LOAD;
+    str_phdr.p_align = 0x1000;
+
+    // Rewrite addresses
+    if (phdr_insert_strategy == PhdrInsertStrategy::kPadding) {
+        for (const Elf_Phdr* pp : bin->phdrs()) {
+            Elf_Phdr p = *pp;
+            if (p.p_type == PT_DYNAMIC) {
+                CHECK_EQ(p.p_filesz % sizeof(Elf_Dyn), 0);
+                auto get_new_vaddr = [](Elf_Addr vaddr) {
+                    // TODO(akawashiro): Fix here
+                    if (vaddr < 0x1000) {
+                        return vaddr + sizeof(Elf_Phdr);
+                    } else {
+                        return vaddr;
+                    }
+                };
+
+                for (size_t i = 0; i < p.p_filesz / sizeof(Elf_Dyn); ++i) {
+                    Elf_Dyn* dyn = const_cast<Elf_Dyn*>(reinterpret_cast<const Elf_Dyn*>(bin->head() + p.p_offset + sizeof(Elf_Dyn) * i));
+                    switch (dyn->d_tag) {
+                        case DT_STRTAB:
+                            dyn->d_un.d_ptr = strtab_vaddr;
+                            break;
+                        case DT_SYMTAB:
+                            dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
+                            break;
+                        case DT_GNU_HASH:
+                            dyn->d_un.d_ptr = gnu_hash_vaddr;
+                            break;
+                        case DT_HASH:
+                            LOG(FATAL) << "We do not support" << ShowDynamicEntryType(DT_HASH);
+                            break;
+                        case DT_RELA:
+                            dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
+                            break;
+                        case DT_VERSYM:
+                            dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
+                            break;
+                        case DT_VERNEED:
+                            dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
+                            break;
+                        case DT_VERDEF:
+                            dyn->d_un.d_ptr = get_new_vaddr(dyn->d_un.d_ptr);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            // TODO(akawashiro): This is super dirty hack!!
+            if (p.p_offset == 0) {
+                p.p_filesz += sizeof(Elf_Phdr);
+                p.p_memsz += sizeof(Elf_Phdr);
+            }
+            Write(fp, p);
+        }
         Write(fp, str_phdr);
+    } else if (phdr_insert_strategy == PhdrInsertStrategy::kPT_NOTE) {
+        Elf_Phdr* victim_note = nullptr;
+        for (const Elf_Phdr* p : bin->phdrs()) {
+            if (p->p_type == PT_NOTE) {
+                victim_note = const_cast<Elf_Phdr*>(p);
+            }
+        }
+
+        CHECK(victim_note != nullptr) << "Cannot find any PT_NOTE segment to rewrite";
+
+        *victim_note = str_phdr;
+
+        for (const Elf_Phdr* pp : bin->phdrs()) {
+            Elf_Phdr p = *pp;
+            if (p.p_type == PT_DYNAMIC) {
+                CHECK_EQ(p.p_filesz % sizeof(Elf_Dyn), 0);
+                for (size_t i = 0; i < p.p_filesz / sizeof(Elf_Dyn); ++i) {
+                    Elf_Dyn* dyn = const_cast<Elf_Dyn*>(reinterpret_cast<const Elf_Dyn*>(bin->head() + p.p_offset + sizeof(Elf_Dyn) * i));
+                    switch (dyn->d_tag) {
+                        case DT_STRTAB:
+                            dyn->d_un.d_ptr = strtab_vaddr;
+                            break;
+                        case DT_GNU_HASH:
+                            dyn->d_un.d_ptr = gnu_hash_vaddr;
+                            break;
+                        case DT_HASH:
+                            LOG(FATAL) << "We do not support" << ShowDynamicEntryType(DT_HASH);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            Write(fp, p);
+            LOG(INFO) << SOLD_LOG_KEY(p.p_type) << SOLD_LOG_BITS(p.p_offset) << SOLD_LOG_BITS(p.p_vaddr);
+        }
     }
 
     // WriteBuf(fp, bin->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size(),
     //          bin->filesize() - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size()));
 
-    WriteBuf(fp, bin->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size(),
-             0x1000 - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * (bin->phdrs().size() + 1)));
-    WriteBuf(fp, bin->head() + 0x1000, bin->filesize() - 0x1000);
+    if (phdr_insert_strategy == PhdrInsertStrategy::kPadding) {
+        WriteBuf(fp, bin->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size(),
+                 0x1000 - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * (bin->phdrs().size() + 1)));
+        WriteBuf(fp, bin->head() + 0x1000, bin->filesize() - 0x1000);
+    } else if (phdr_insert_strategy == PhdrInsertStrategy::kPT_NOTE) {
+        WriteBuf(fp, bin->head() + sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size(),
+                 bin->filesize() - (sizeof(Elf_Ehdr) + sizeof(Elf_Phdr) * bin->phdrs().size()));
+    }
     EmitPad(fp, strtab_fileoffset);
 
     // Emit strtab
