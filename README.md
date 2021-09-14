@@ -21,7 +21,7 @@ shared objects. For example,
 ```
 
 ## Requirements
-`sold` works only on Linux on x86-64 architecture.
+`sold` works only on Linux on x86-64 and aarch64 architectures.
 
 ## How to build
 ```bash
@@ -48,7 +48,6 @@ Options
 - Executables
 - TLS in executables
     - Initial exec and local exec
-- AArch64
 - x86-32
 - Test Fedora linux in CI
 
