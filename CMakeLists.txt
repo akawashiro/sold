@@ -78,6 +78,10 @@ if(BUILD_TESTING)
     NAME c++_features_test
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests"
     COMMAND run-all-tests.sh)
+  add_test(
+    NAME renamer
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests/renamer"
+    COMMAND test.sh)
 endif()
 
 if(SOLD_PYBIND_TEST)

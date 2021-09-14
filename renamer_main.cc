@@ -1,6 +1,7 @@
 #include <getopt.h>
 
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <set>
 
@@ -32,7 +33,9 @@ std::map<std::string, std::string> ReadMappingFile(std::string file) {
     std::string line;
     std::set<std::string> froms, tos;
     std::map<std::string, std::string> res;
-    std::ifstream infile(file);
+    std::ifstream infile(file, std::ifstream::in);
+    CHECK(infile);
+
     while (std::getline(infile, line)) {
         std::istringstream iss(line);
         std::string from, to;
