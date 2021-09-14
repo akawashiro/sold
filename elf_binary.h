@@ -22,10 +22,11 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <set>
 
 class ELFBinary {
 public:
-    ELFBinary(const std::string& filename, int fd, char* head, size_t size);
+    ELFBinary(const std::string& filename, int fd, char* head, size_t mapped_size, size_t filesize);
 
     ~ELFBinary();
 
@@ -45,15 +46,20 @@ public:
     const std::string& runpath() const { return runpath_; }
     const std::string& rpath() const { return rpath_; }
 
-    const Elf_Sym* symtab() const { return symtab_; }
+    Elf_Sym* symtab() const { return symtab_; }
+    Elf_Verneed* verneed() const { return verneed_; }
+    Elf_Versym* versym() const { return versym_; }
+    const Elf_Xword verneednum() const { return verneednum_; }
     const Elf_Rel* rel() const { return rel_; }
     size_t num_rels() const { return num_rels_; }
     const Elf_Rel* plt_rel() const { return plt_rel_; }
     size_t num_plt_rels() const { return num_plt_rels_; }
     const EHFrameHeader* eh_frame_header() const { return &eh_frame_header_; }
+    const char* strtab() const { return strtab_; }
 
     const char* head() const { return head_; }
-    size_t size() const { return size_; }
+    size_t filesize() const { return filesize_; }
+    size_t mapped_size() const { return mapped_size_; }
 
     const std::string& name() const { return name_; }
 
@@ -75,6 +81,7 @@ public:
     bool IsOffsetInTLSData(uintptr_t offset) const;
     bool IsOffsetInTLSBSS(uintptr_t offset) const;
 
+    std::set<int> CollectSymbolsFromDynamic();
     void ReadDynSymtab(const std::map<std::string, std::string>& filename_to_soname);
 
     const char* Str(uintptr_t name) { return strtab_ + name; }
@@ -109,7 +116,8 @@ private:
     const std::string filename_;
     int fd_;
     char* head_;
-    size_t size_;
+    size_t filesize_;
+    size_t mapped_size_;
 
     Elf_Ehdr* ehdr_{nullptr};
     std::vector<Elf_Phdr*> phdrs_;

@@ -28,8 +28,8 @@
 
 #include "version_builder.h"
 
-ELFBinary::ELFBinary(const std::string& filename, int fd, char* head, size_t size)
-    : filename_(filename), fd_(fd), head_(head), size_(size) {
+ELFBinary::ELFBinary(const std::string& filename, int fd, char* head, size_t mapped_size, size_t filesize)
+    : filename_(filename), fd_(fd), head_(head), mapped_size_(mapped_size), filesize_(filesize) {
     ehdr_ = reinterpret_cast<Elf_Ehdr*>(head);
 
     CHECK_EQ(ehdr_->e_type, ET_DYN);
@@ -50,7 +50,7 @@ ELFBinary::ELFBinary(const std::string& filename, int fd, char* head, size_t siz
 }
 
 ELFBinary::~ELFBinary() {
-    munmap(head_, size_);
+    munmap(head_, mapped_size_);
     close(fd_);
 }
 
@@ -148,10 +148,7 @@ std::set<int> CollectSymbolsFromElfHash(const std::string& name, Elf_Hash* hash)
 
 }  // namespace
 
-void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename_to_soname) {
-    CHECK(symtab_);
-    LOG(INFO) << "Read dynsymtab of " << name();
-
+std::set<int> ELFBinary::CollectSymbolsFromDynamic() {
     // Since we only rely on program headers and do not read section headers
     // at all, we do not know the exact size of .dynsym section. We collect
     // indices in .dynsym from both (GNU or ELF) hash and relocs.
@@ -167,6 +164,18 @@ void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename
     for (int idx : CollectSymbolsFromReloc(rel_, num_rels_)) indices.insert(idx);
     for (int idx : CollectSymbolsFromReloc(plt_rel_, num_plt_rels_)) indices.insert(idx);
 
+    return indices;
+}
+
+void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename_to_soname) {
+    CHECK(symtab_);
+    LOG(INFO) << "Read dynsymtab of " << name();
+
+    // Since we only rely on program headers and do not read section headers
+    // at all, we do not know the exact size of .dynsym section. We collect
+    // indices in .dynsym from both (GNU or ELF) hash and relocs.
+
+    std::set<int> indices = CollectSymbolsFromDynamic();
     std::set<std::tuple<std::string, std::string, std::string>> duplicate_check;
 
     for (int idx : indices) {
@@ -682,7 +691,7 @@ std::unique_ptr<ELFBinary> ReadELF(const std::string& filename) {
             // TODO(hamaji): Non 64bit ELF isn't supported yet.
             return nullptr;
         }
-        return std::make_unique<ELFBinary>(filename.c_str(), fd, p, mapped_size);
+        return std::make_unique<ELFBinary>(filename.c_str(), fd, p, mapped_size, size);
     }
     err(1, "unknown file format: %s", filename.c_str());
 }
