@@ -22,7 +22,7 @@ void print_help(std::ostream& os) {
 Options:
 -h, --help                      Show this help message and exit
 -o, --output-file OUTPUT_FILE   Specify the ELF file to output (this option is mandatory)
--i, --input-file INPUT_FILE     Specify the ELF file to output
+-i, --input-file INPUT_FILE     Specify the ELF file to input
 -e, --exclude-so EXCLUDE_FILE   Specify the ELF file to exclude (e.g. libmax.so) 
 -L, --custom-library-path PATH  Use PATH instead of the default path such as /usr/lib
 --section-headers               Emit section headers
