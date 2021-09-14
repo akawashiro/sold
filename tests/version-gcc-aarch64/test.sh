@@ -10,7 +10,7 @@ aarch64-linux-gnu-gcc -Wl,--hash-style=gnu -shared -Wl,-soname,libmax.so -Wl,--v
 ln -sf libmax.so.2 libmax.so
 aarch64-linux-gnu-gcc -Wl,--hash-style=gnu -o vertest2 vertest2.c libmax.so
 
-LD_LIBRARY_PATH=. ../../build/sold -e libmax.so -o vertest1.out vertest1 --section-headers --check-output  --custom-library-path /usr/aarch64-linux-gnu/lib
+LD_LIBRARY_PATH=. ../../build/sold -e libmax.so -o vertest1.out vertest1 --section-headers --check-output  --custom-library-path /usr/aarch64-linux-gnu/lib --custom-library-path /usr/aarch64-linux-gnu/lib64
 LD_LIBRARY_PATH=. qemu-aarch64 -L /usr/aarch64-linux-gnu ./vertest1.out
-LD_LIBRARY_PATH=. ../../build/sold -e libmax.so -o vertest2.out vertest2  --section-headers --check-output --custom-library-path /usr/aarch64-linux-gnu/lib
+LD_LIBRARY_PATH=. ../../build/sold -e libmax.so -o vertest2.out vertest2  --section-headers --check-output --custom-library-path /usr/aarch64-linux-gnu/lib --custom-library-path /usr/aarch64-linux-gnu/lib64
 LD_LIBRARY_PATH=. qemu-aarch64 -L /usr/aarch64-linux-gnu ./vertest2.out

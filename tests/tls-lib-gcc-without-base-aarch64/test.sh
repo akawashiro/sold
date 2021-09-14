@@ -8,5 +8,5 @@ aarch64-linux-gnu-gcc -Wl,--hash-style=gnu -o main.out main.c original/lib.so or
 
 cp original/base.so sold_out/base.so
 
-LD_LIBRARY_PATH=original ../../build/sold original/lib.so -o sold_out/lib.so --section-headers --exclude-so base.so --check-output --custom-library-path /usr/aarch64-linux-gnu/lib
+LD_LIBRARY_PATH=original ../../build/sold original/lib.so -o sold_out/lib.so --section-headers --exclude-so base.so --check-output --custom-library-path /usr/aarch64-linux-gnu/lib --custom-library-path /usr/aarch64-linux-gnu/lib64
 LD_LIBRARY_PATH=sold_out qemu-aarch64 -L /usr/aarch64-linux-gnu ./main.out

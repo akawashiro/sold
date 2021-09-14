@@ -40,9 +40,7 @@ int base_global = 98;
 
 class BaseImpl : public Base {
 public:
-    int vf() override {
-        return 1234;
-    }
+    int vf() override { return 1234; }
 };
 
 Base* MakeBase() {

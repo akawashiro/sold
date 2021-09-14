@@ -12,7 +12,7 @@ aarch64-linux-gnu-gcc -Wl,--hash-style=gnu -shared -Wl,-soname,lib.so -o answer/
 # LD_LIBRARY_PATH=original gcc -Wl,--hash-style=gnu -o main.out main.c original/lib.so original/base2.so original/base.so
 # LD_LIBRARY_PATH=original ./main.out
 
-LD_LIBRARY_PATH=original ../../build/sold original/lib.so -o sold_out/lib.so --section-headers --check-output --custom-library-path /usr/aarch64-linux-gnu/lib
+LD_LIBRARY_PATH=original ../../build/sold original/lib.so -o sold_out/lib.so --section-headers --check-output --custom-library-path /usr/aarch64-linux-gnu/lib --custom-library-path /usr/aarch64-linux-gnu/lib64
  
 LD_LIBRARY_PATH=sold_out aarch64-linux-gnu-gcc -Wl,--hash-style=gnu -o main.out main.c sold_out/lib.so
 LD_LIBRARY_PATH=sold_out qemu-aarch64 -L /usr/aarch64-linux-gnu ./main.out

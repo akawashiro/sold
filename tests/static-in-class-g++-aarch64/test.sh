@@ -5,7 +5,7 @@ aarch64-linux-gnu-g++ -shared -Wl,-soname,lib.so -o lib.so lib.o
 aarch64-linux-gnu-g++ -Wl,--hash-style=gnu -o main.out main.cc lib.so
 
 mv lib.so lib.so.original
-../../build/sold -i lib.so.original -o lib.so.soldout --section-headers --check-output --custom-library-path /usr/aarch64-linux-gnu/lib
+../../build/sold -i lib.so.original -o lib.so.soldout --section-headers --check-output --custom-library-path /usr/aarch64-linux-gnu/lib --custom-library-path /usr/aarch64-linux-gnu/lib64
 
 # Use sold
 ln -sf lib.so.soldout lib.so
