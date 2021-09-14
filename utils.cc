@@ -85,8 +85,8 @@ void EmitZeros(FILE* fp, uintptr_t cnt) {
 
 void EmitPad(FILE* fp, uintptr_t to) {
     uint pos = ftell(fp);
-    CHECK(pos >= 0);
-    CHECK(pos <= to);
+    CHECK_GE(pos, 0);
+    CHECK_LE(pos, to);
     EmitZeros(fp, to - pos);
 }
 
