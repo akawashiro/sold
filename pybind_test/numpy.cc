@@ -27,4 +27,3 @@ py::array_t<double> add_arrays(py::array_t<double> input1, py::array_t<double> i
 PYBIND11_MODULE(mynumpy, m) {
     m.def("add_arrays", &add_arrays, "Add two NumPy arrays");
 }
-
