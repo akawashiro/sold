@@ -18,22 +18,29 @@
 #include "utils.h"
 
 uintptr_t StrtabBuilder::Add(const std::string& s) {
+    std::string t = s;
+    if (rename_mapping_.find(s) != rename_mapping_.end()) t = rename_mapping_[s];
+
     CHECK(!is_freezed_);
-    if (cache.find(s) != cache.end()) {
-        return cache[s];
+    if (cache.find(t) != cache.end()) {
+        return cache[t];
     }
     uintptr_t pos = static_cast<uintptr_t>(strtab_.size());
-    strtab_ += s;
+    strtab_ += t;
     strtab_ += '\0';
-    cache[s] = pos;
+    cache[t] = pos;
+    strs_.emplace_back(t);
     return pos;
 }
 
 uintptr_t StrtabBuilder::GetPos(const std::string& s) {
-    if (cache.find(s) != cache.end()) {
-        return cache[s];
+    std::string t = s;
+    if (rename_mapping_.find(s) != rename_mapping_.end()) t = rename_mapping_[s];
+
+    if (cache.find(t) != cache.end()) {
+        return cache[t];
     } else {
-        LOG(FATAL) << s << " is not in StrtabBuilder.";
+        LOG(FATAL) << t << " is not in StrtabBuilder.";
         exit(1);
     }
 }
