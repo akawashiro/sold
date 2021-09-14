@@ -41,6 +41,9 @@ add_executable(
     print_dtrela
     print_dtrela.cc
     )
+add_executable(renamer renamer_main.cc)
+target_link_libraries(renamer sold_lib glog)
+
 target_link_libraries(print_dtrela sold_lib glog)
 
 add_executable(
@@ -90,6 +93,10 @@ if(BUILD_TESTING)
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests"
         COMMAND run-all-tests.sh
         )
+  add_test(
+    NAME renamer
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests/renamer"
+    COMMAND test.sh)
 endif()
 
 if(SOLD_PYBIND_TEST)
