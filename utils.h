@@ -165,6 +165,7 @@ struct Syminfo {
     Elf_Sym* sym;
 };
 
+std::string ShowDynamicEntryType(int type);
 std::string ShowRelocationType(int type);
 std::string ShowDW_EH_PE(uint8_t type);
 std::ostream& operator<<(std::ostream& os, const Syminfo& s);
