@@ -106,7 +106,7 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
                 CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
             }
         } else {
-            LOG(INFO) << "Symbol (" << name << ", " << soname << ", " << version << ") not found";
+            LOG(FATAL) << "Symbol (" << name << ", " << soname << ", " << version << ") not found";
             Syminfo s{name, soname, version, VER_NDX_LOCAL, NULL};
             sym.index = AddSym(s);
             CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
@@ -122,8 +122,9 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
     }
 }
 
-// Returns the index of symbol(name, soname, version)
-uintptr_t SymtabBuilder::ResolveCopy(const std::string& name, const std::string& soname, const std::string version) {
+// Returns and fills st_value to index true when the symbol specified
+// with (name, soname, version) is defined.
+bool SymtabBuilder::ResolveCopy(const std::string& name, const std::string& soname, const std::string version, uintptr_t* index) {
     // TODO(hamaji): Refactor.
     Symbol sym{};
     sym.sym.st_name = 0;
@@ -162,12 +163,17 @@ uintptr_t SymtabBuilder::ResolveCopy(const std::string& name, const std::string&
             sym.index = AddSym(s);
             CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
         } else {
-            LOG(INFO) << "Symbol " << name << " not found for copy";
-            CHECK(false);
+            LOG(FATAL) << "Symbol " << name << " not found for copy";
         }
     }
 
-    return sym.index;
+    if (!IsDefined(sym.sym)) {
+        *index = sym.index;
+        return false;
+    } else {
+        *index = sym.index;
+        return true;
+    }
 }
 
 // Make a new symbol table(symtab_) from exposed_syms_.
