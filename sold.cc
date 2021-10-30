@@ -767,9 +767,10 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                                   << SOLD_LOG_BITS(*reinterpret_cast<const uint32_t*>(reloc_dest - 8)) << SOLD_LOG_KEY(bin->filename())
                                   << SOLD_LOG_BITS(newrel.r_offset) << std::endl;
                         reloc_copy_.emplace_back(std::make_tuple(newrel.r_offset, reloc_src, sym->st_size));
-                        // memcpy(reloc_dest, reloc_src, sym->st_size);
                         goto skip_newrel;
                     } else {
+                        // Hmm
+                        // LOG(FATAL) << SOLD_LOG_KEY(name) << SOLD_LOG_KEY(soname);
                         newrel.r_info = ELF_R_INFO(val_or_index, type);
                     }
                 } else {
