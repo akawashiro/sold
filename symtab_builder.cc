@@ -173,13 +173,13 @@ bool SymtabBuilder::ResolveCopy(const std::string& name, const std::string& sona
         *val_or_index = sym.index;
         return false;
     } else {
-        *val_or_index = sym.sym.st_value;
+        // *val_or_index = sym.sym.st_value;
         // Destination
         std::cerr << SOLD_LOG_KEY(name) << SOLD_LOG_BITS(sym.sym.st_value) << std::endl;
-        return true;
         // current master
-        // *val_or_index = sym.index;
         // return false;
+        *val_or_index = sym.index;
+        return true;
     }
 }
 

@@ -90,6 +90,16 @@ void EmitPad(FILE* fp, uintptr_t to) {
     EmitZeros(fp, to - pos);
 }
 
+void MemcpyFile(FILE* fp, uintptr_t offset, const void* src, size_t size) {
+    uint pos = ftell(fp);
+    CHECK_GE(offset, 0);
+    CHECK_GE(size, 0);
+    CHECK_LT(offset + size, pos);
+    fseek(fp, offset, SEEK_SET);
+    fwrite(src, 1, size, fp);
+    fseek(fp, pos, SEEK_SET);
+}
+
 void EmitAlign(FILE* fp) {
     long pos = ftell(fp);
     CHECK(pos >= 0);

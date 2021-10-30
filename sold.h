@@ -266,13 +266,28 @@ private:
 
     void EmitCode(FILE* fp) {
         CHECK(ftell(fp) == CodeOffset());
-        for (const Load& load : loads_) {
+        for (int i = 0; i < loads_.size(); i++) {
+            const Load& load = loads_[i];
             ELFBinary* bin = load.bin;
             Elf_Phdr* phdr = load.orig;
             LOG(INFO) << "Emitting code of " << bin->name() << " from " << HexString(ftell(fp)) << " => " << HexString(load.emit.p_offset)
                       << " + " << HexString(phdr->p_filesz);
             EmitPad(fp, load.emit.p_offset);
             WriteBuf(fp, bin->head() + phdr->p_offset, phdr->p_filesz);
+            // To process reloc_copy_, try to emit bss section as much as possible
+            if (i < loads_.size() - 1 && load.emit.p_offset + load.emit.p_memsz <= loads_[i + 1].emit.p_offset)
+                EmitPad(fp, load.emit.p_offset + load.emit.p_memsz);
+            for (auto t : reloc_copy_) {
+                uintptr_t reloc_dest = std::get<0>(t);
+                const void* reloc_src = std::get<1>(t);
+                Elf_Xword reloc_size = std::get<2>(t);
+                bool in_load = load.emit.p_vaddr <= reloc_dest && reloc_dest < (load.emit.p_vaddr + load.emit.p_memsz);
+                LOG(INFO) << SOLD_LOG_BITS(reloc_dest) << SOLD_LOG_BITS(load.emit.p_offset) << SOLD_LOG_BITS(load.emit.p_memsz)
+                          << SOLD_LOG_BITS(load.emit.p_vaddr) << SOLD_LOG_KEY(in_load);
+                if (in_load) {
+                    MemcpyFile(fp, reloc_dest - load.emit.p_vaddr + load.emit.p_offset, reloc_src, reloc_size);
+                }
+            }
         }
     }
 
@@ -503,4 +518,6 @@ private:
     std::map<ELFBinary*, uintptr_t> bin_to_init_array_offset_;
     std::map<ELFBinary*, uintptr_t> bin_to_fini_array_offset_;
     TLS tls_;
+    // <Address, source, size>
+    std::vector<std::tuple<uintptr_t, const void*, Elf64_Xword>> reloc_copy_;
 };

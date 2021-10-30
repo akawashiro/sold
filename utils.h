@@ -142,6 +142,7 @@ void WriteBuf(FILE* fp, const void* buf, size_t size);
 void EmitZeros(FILE* fp, uintptr_t cnt);
 void EmitPad(FILE* fp, uintptr_t to);
 void EmitAlign(FILE* fp);
+void MemcpyFile(FILE* fp, uintptr_t offset, const void* src, size_t size);
 
 struct Range {
     uintptr_t start;

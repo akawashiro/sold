@@ -6,6 +6,7 @@ g++ -Wl,--hash-style=gnu -o main main.cc lib.so -lpthread
 
 mv lib.so lib.so.original
 ../../build/sold -i lib.so.original -o lib.so.soldout --section-headers --check-output
+# ../../build/sold -i lib.so.original -o lib.so.soldout --section-headers
 
 # Use sold
 ln -sf lib.so.soldout lib.so

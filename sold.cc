@@ -279,8 +279,15 @@ void Sold::EmitPhdrs(FILE* fp) {
         phdrs.push_back(phdr);
     }
 
-    for (const Load& load : loads_) {
-        phdrs.push_back(load.emit);
+    // for (const Load& load : loads_) {
+    //     phdrs.push_back(load.emit);
+    // }
+    // I agree this is very bad hack. But I need this to make reloc_copy_ working.
+    for (int i = 0; i < loads_.size(); i++) {
+        Elf_Phdr p = loads_[i].emit;
+        if (i < loads_.size() - 1 && loads_[i].emit.p_offset + loads_[i].emit.p_memsz <= loads_[i + 1].emit.p_offset)
+            p.p_filesz = p.p_memsz;
+        phdrs.emplace_back(p);
     }
 
     if (tls_.memsz) {
@@ -607,6 +614,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                            "symbol, something wrong may have happened.";
                 }
                 newrel.r_addend += offset;
+                LOG(INFO) << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend);
                 break;
             }
 
@@ -616,9 +624,12 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                 if (syms_.Resolve(bin->Str(sym->st_name), soname, version_name, val_or_index)) {
                     newrel.r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
                     newrel.r_addend = val_or_index;
+
+                    LOG(INFO) << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend);
                 } else {
                     newrel.r_info = ELF_R_INFO(val_or_index, type);
                 }
+                LOG(INFO) << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend);
                 break;
             }
 
@@ -630,6 +641,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                 } else {
                     newrel.r_info = ELF_R_INFO(val_or_index, type);
                 }
+                LOG(INFO) << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend);
                 break;
             }
 
@@ -744,13 +756,21 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                             }
                         }
                     }
-                    CHECK(reloc_src != nullptr);
-                    void* reloc_dest = reinterpret_cast<void*>(bin->head_mut() + bin->OffsetFromAddr(rel->r_offset));
-                    std::cerr << SOLD_LOG_BITS(*reinterpret_cast<const uint32_t*>(reloc_src)) << SOLD_LOG_KEY(sym->st_size)
-                              << SOLD_LOG_BITS(rel->r_offset) << SOLD_LOG_BITS(bin->OffsetFromAddr(rel->r_offset))
-                              << SOLD_LOG_BITS(*reinterpret_cast<const uint32_t*>(reloc_dest)) << std::endl;
-                    memcpy(reloc_dest, reloc_src, sym->st_size);
-                    goto skip_newrel;
+
+                    if (reloc_src != nullptr) {
+                        CHECK(reloc_src != nullptr) << name;
+                        void* reloc_dest = reinterpret_cast<void*>(bin->head_mut() + bin->OffsetFromAddr(rel->r_offset));
+                        std::cerr << SOLD_LOG_BITS(*reinterpret_cast<const uint32_t*>(reloc_src)) << SOLD_LOG_KEY(sym->st_size)
+                                  << SOLD_LOG_BITS(rel->r_offset) << SOLD_LOG_BITS(bin->OffsetFromAddr(rel->r_offset))
+                                  << SOLD_LOG_BITS(*reinterpret_cast<const uint32_t*>(reloc_dest))
+                                  << SOLD_LOG_BITS(*reinterpret_cast<const uint32_t*>(reloc_dest - 8)) << SOLD_LOG_KEY(bin->filename())
+                                  << SOLD_LOG_BITS(newrel.r_offset) << std::endl;
+                        reloc_copy_.emplace_back(std::make_tuple(newrel.r_offset, reloc_src, sym->st_size));
+                        // memcpy(reloc_dest, reloc_src, sym->st_size);
+                        goto skip_newrel;
+                    } else {
+                        newrel.r_info = ELF_R_INFO(val_or_index, type);
+                    }
                 } else {
                     newrel.r_info = ELF_R_INFO(val_or_index, type);
                 }
@@ -762,6 +782,8 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                 CHECK(false);
         }
 
+        LOG(INFO) << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend) << " " << ShowRelocationType(type) << " "
+                  << SOLD_LOG_BITS(rel->r_addend) << SOLD_LOG_BITS(rel->r_offset);
         rels_.push_back(newrel);
     skip_newrel:;
     }
