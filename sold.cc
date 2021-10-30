@@ -143,7 +143,8 @@ void Sold::BuildLoads() {
 
             file_offset += phdr->p_vaddr & 0xfff;
             load.emit.p_offset = file_offset;
-            file_offset = AlignNext(file_offset + phdr->p_filesz);
+            // file_offset = AlignNext(file_offset + phdr->p_filesz);
+            file_offset = AlignNext(file_offset + phdr->p_memsz);
             load.emit.p_vaddr += offset;
             load.emit.p_paddr += offset;
             // TODO(hamaji): Add PF_W only for GOT.
@@ -285,7 +286,7 @@ void Sold::EmitPhdrs(FILE* fp) {
     // I agree this is very bad hack. But I need this to make reloc_copy_ working.
     for (int i = 0; i < loads_.size(); i++) {
         Elf_Phdr p = loads_[i].emit;
-        if (i < loads_.size() - 1 && loads_[i].emit.p_offset + loads_[i].emit.p_memsz <= loads_[i + 1].emit.p_offset)
+        if (i == loads_.size() - 1 || loads_[i].emit.p_offset + loads_[i].emit.p_memsz <= loads_[i + 1].emit.p_offset)
             p.p_filesz = p.p_memsz;
         phdrs.emplace_back(p);
     }
@@ -401,7 +402,7 @@ void Sold::DecideMemOffset() {
         const Range range = bin->GetRange() + offset;
         CHECK(range.start == offset) << "sold cannot handle other than shared objects.";
         offsets_.emplace(bin, range.start);
-        LOG(INFO) << "Assigned: " << bin->soname() << " " << HexString(range.start, 8) << "-" << HexString(range.end, 8);
+        LOG(INFO) << "Assigned: " << bin->filename() << " " << HexString(range.start, 8) << "-" << HexString(range.end, 8);
         offset = range.end;
     }
     tls_offset_ = offset;

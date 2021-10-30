@@ -275,16 +275,28 @@ private:
             EmitPad(fp, load.emit.p_offset);
             WriteBuf(fp, bin->head() + phdr->p_offset, phdr->p_filesz);
             // To process reloc_copy_, try to emit bss section as much as possible
-            if (i < loads_.size() - 1 && load.emit.p_offset + load.emit.p_memsz <= loads_[i + 1].emit.p_offset)
+            bool emit_bss = (i == loads_.size() - 1) || load.emit.p_vaddr + load.emit.p_memsz <= loads_[i + 1].emit.p_vaddr;
+            if (emit_bss) {
                 EmitPad(fp, load.emit.p_offset + load.emit.p_memsz);
+            } else {
+                CHECK_GT(loads_.size() - 1, i);
+                EmitPad(fp, loads_[i + 1].emit.p_offset);
+            }
+            if (!emit_bss) {
+                LOG(INFO) << SOLD_LOG_BITS(load.emit.p_vaddr + load.emit.p_memsz) << SOLD_LOG_BITS(loads_[i + 1].emit.p_vaddr);
+            }
             for (auto t : reloc_copy_) {
                 uintptr_t reloc_dest = std::get<0>(t);
                 const void* reloc_src = std::get<1>(t);
                 Elf_Xword reloc_size = std::get<2>(t);
                 bool in_load = load.emit.p_vaddr <= reloc_dest && reloc_dest < (load.emit.p_vaddr + load.emit.p_memsz);
+                bool in_bss =
+                    (load.emit.p_vaddr + load.emit.p_filesz) <= reloc_dest && reloc_dest < (load.emit.p_vaddr + load.emit.p_memsz);
                 LOG(INFO) << SOLD_LOG_BITS(reloc_dest) << SOLD_LOG_BITS(load.emit.p_offset) << SOLD_LOG_BITS(load.emit.p_memsz)
-                          << SOLD_LOG_BITS(load.emit.p_vaddr) << SOLD_LOG_KEY(in_load);
+                          << SOLD_LOG_BITS(load.emit.p_vaddr) << SOLD_LOG_KEY(in_load) << SOLD_LOG_KEY(in_bss) << SOLD_LOG_KEY(emit_bss)
+                          << SOLD_LOG_BITS(load.orig->p_offset);
                 if (in_load) {
+                    CHECK(reloc_dest - load.emit.p_vaddr + load.emit.p_offset + reloc_size <= ftell(fp));
                     MemcpyFile(fp, reloc_dest - load.emit.p_vaddr + load.emit.p_offset, reloc_src, reloc_size);
                 }
             }
