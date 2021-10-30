@@ -419,25 +419,25 @@ private:
         }
     }
 
-    void RelocateSymbols2(ELFBinary* bin, const Elf_Rel* rels, size_t num) {
-        if (!rels) CHECK_EQ(0, num);
-        uintptr_t offset = offsets_[bin];
-        if (bin->ehdr()->e_machine == EM_X86_64) {
-            for (size_t i = 0; i < num; ++i) {
-                const Elf_Sym* sym = &bin->symtab()[ELF_R_SYM(rels[i].r_info)];
-                if (bin->Str(sym->st_name) == std::string("hoge_var")) {
-                    std::cerr << SOLD_LOG_KEY(bin->Str(sym->st_name)) << std::endl;
-                    RelocateSymbol_x86_64(bin, &rels[i], offset);
-                }
-            }
-        } else if (bin->ehdr()->e_machine == EM_AARCH64) {
-            for (size_t i = 0; i < num; ++i) {
-                RelocateSymbol_aarch64(bin, &rels[i], offset);
-            }
-        } else {
-            CHECK(false) << "sold does not support " << SOLD_LOG_KEY(bin->ehdr()->e_machine) << ".";
-        }
-    }
+    // void RelocateSymbols2(ELFBinary* bin, const Elf_Rel* rels, size_t num) {
+    //     if (!rels) CHECK_EQ(0, num);
+    //     uintptr_t offset = offsets_[bin];
+    //     if (bin->ehdr()->e_machine == EM_X86_64) {
+    //         for (size_t i = 0; i < num; ++i) {
+    //             const Elf_Sym* sym = &bin->symtab()[ELF_R_SYM(rels[i].r_info)];
+    //             if (bin->Str(sym->st_name) == std::string("hoge_var")) {
+    //                 // std::cerr << SOLD_LOG_KEY(bin->Str(sym->st_name)) << std::endl;
+    //                 RelocateSymbol_x86_64(bin, &rels[i], offset);
+    //             }
+    //         }
+    //     } else if (bin->ehdr()->e_machine == EM_AARCH64) {
+    //         for (size_t i = 0; i < num; ++i) {
+    //             RelocateSymbol_aarch64(bin, &rels[i], offset);
+    //         }
+    //     } else {
+    //         CHECK(false) << "sold does not support " << SOLD_LOG_KEY(bin->ehdr()->e_machine) << ".";
+    //     }
+    // }
 
     void RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t offset);
 

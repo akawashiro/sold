@@ -65,8 +65,8 @@ Range ELFBinary::GetRange() const {
     Range range{std::numeric_limits<uintptr_t>::max(), std::numeric_limits<uintptr_t>::min()};
     for (Elf_Phdr* phdr : loads_) {
         range.start = std::min(range.start, phdr->p_vaddr);
-        // range.end = std::max(range.end, AlignNext(phdr->p_vaddr + phdr->p_memsz));
-        range.end = std::max(range.end, AlignNext(phdr->p_vaddr + phdr->p_filesz));
+        range.end = std::max(range.end, AlignNext(phdr->p_vaddr + phdr->p_memsz));
+        // range.end = std::max(range.end, AlignNext(phdr->p_vaddr + phdr->p_filesz));
     }
     return range;
 }

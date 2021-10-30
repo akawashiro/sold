@@ -1,5 +1,9 @@
 #! /bin/bash -u
 
+pushd $(git rev-parse --show-toplevel)/build
+ninja
+popd
+
 unexpected_failed_tests=
 unexpected_succeeded_tests=
 
