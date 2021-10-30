@@ -319,8 +319,19 @@ private:
 
         std::vector<Syminfo> syms;
         for (ELFBinary* bin : link_binaries_) {
-            LoadDynSymtab(bin, syms);
+            LoadDynSymtab(bin, syms, true);
         }
+        // Hmm, This is maybe wrong.
+        // for (ELFBinary* bin : link_binaries_) {
+        //     if (is_executable_ && bin == main_binary_.get()) {
+        //         continue;
+        //     } else {
+        //         LoadDynSymtab(bin, syms, true);
+        //     }
+        // }
+        // if (is_executable_) {
+        //     LoadDynSymtab(main_binary_.get(), syms, false);
+        // }
         for (auto s : syms) {
             LOG(INFO) << "SYM " << s.name;
         }
@@ -347,7 +358,7 @@ private:
 
     uintptr_t RemapTLS(const char* msg, ELFBinary* bin, uintptr_t off);
 
-    void LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab);
+    void LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab, bool load_defined_syms);
 
     void CopyPublicSymbols();
 
@@ -361,6 +372,8 @@ private:
         CHECK(bin->symtab());
         RelocateSymbols(bin, bin->rel(), bin->num_rels());
         RelocateSymbols(bin, bin->plt_rel(), bin->num_plt_rels());
+        // RelocateSymbols2(bin, bin->rel(), bin->num_rels());
+        // RelocateSymbols2(bin, bin->plt_rel(), bin->num_plt_rels());
     }
 
     void RelocateSymbols(ELFBinary* bin, const Elf_Rel* rels, size_t num) {
@@ -369,6 +382,26 @@ private:
         if (bin->ehdr()->e_machine == EM_X86_64) {
             for (size_t i = 0; i < num; ++i) {
                 RelocateSymbol_x86_64(bin, &rels[i], offset);
+            }
+        } else if (bin->ehdr()->e_machine == EM_AARCH64) {
+            for (size_t i = 0; i < num; ++i) {
+                RelocateSymbol_aarch64(bin, &rels[i], offset);
+            }
+        } else {
+            CHECK(false) << "sold does not support " << SOLD_LOG_KEY(bin->ehdr()->e_machine) << ".";
+        }
+    }
+
+    void RelocateSymbols2(ELFBinary* bin, const Elf_Rel* rels, size_t num) {
+        if (!rels) CHECK_EQ(0, num);
+        uintptr_t offset = offsets_[bin];
+        if (bin->ehdr()->e_machine == EM_X86_64) {
+            for (size_t i = 0; i < num; ++i) {
+                const Elf_Sym* sym = &bin->symtab()[ELF_R_SYM(rels[i].r_info)];
+                if (bin->Str(sym->st_name) == std::string("hoge_var")) {
+                    std::cerr << SOLD_LOG_KEY(bin->Str(sym->st_name)) << std::endl;
+                    RelocateSymbol_x86_64(bin, &rels[i], offset);
+                }
             }
         } else if (bin->ehdr()->e_machine == EM_AARCH64) {
             for (size_t i = 0; i < num; ++i) {

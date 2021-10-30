@@ -477,7 +477,7 @@ uintptr_t Sold::RemapTLS(const char* msg, ELFBinary* bin, uintptr_t off) {
 // Push symbols of bin to symtab.
 // When the same symbol is already in symtab, LoadDynSymtab selects a more
 // concretely defined one.
-void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab) {
+void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab, bool load_defined_syms) {
     bin->ReadDynSymtab(filename_to_soname_);
 
     uintptr_t offset = offsets_[bin];
@@ -485,6 +485,7 @@ void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab) {
     for (const auto& p : bin->GetSymbolMap()) {
         const std::string& name = p.name;
         Elf_Sym* sym = p.sym;
+        // if (!load_defined_syms && IsDefined(*sym)) continue;
         if (IsTLS(*sym) && sym->st_shndx != SHN_UNDEF) {
             sym->st_value = RemapTLS("symbol", bin, sym->st_value);
         } else if (sym->st_value) {
@@ -725,11 +726,17 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
 
             case R_X86_64_COPY: {
                 const std::string name = bin->Str(sym->st_name);
-                uintptr_t index;
-                if (syms_.ResolveCopy(name, soname, version_name, &index)) {
-                    newrel.r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
+                uintptr_t val_or_index;
+
+                // Current master
+                // syms_.ResolveCopy(name, soname, version_name, &val_or_index);
+                // newrel.r_info = ELF_R_INFO(val_or_index, type);
+
+                if (syms_.ResolveCopy(name, soname, version_name, &val_or_index)) {
+                    newrel.r_info = ELF_R_INFO(0, R_X86_64_IRELATIVE);
+                    newrel.r_addend = val_or_index;
                 } else {
-                    newrel.r_info = ELF_R_INFO(index, type);
+                    newrel.r_info = ELF_R_INFO(val_or_index, type);
                 }
                 break;
             }

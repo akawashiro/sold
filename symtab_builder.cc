@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iostream>
 #include <limits>
 #include <set>
 
@@ -30,6 +31,7 @@ SymtabBuilder::SymtabBuilder() {
     si.sym = NULL;
 
     Symbol sym{};
+    sym.sym.st_size = 0;
 
     AddSym(si);
     CHECK(syms_.emplace(std::make_tuple("", "", ""), sym).second);
@@ -107,9 +109,9 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
             }
         } else {
             LOG(FATAL) << "Symbol (" << name << ", " << soname << ", " << version << ") not found";
-            Syminfo s{name, soname, version, VER_NDX_LOCAL, NULL};
-            sym.index = AddSym(s);
-            CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
+            // Syminfo s{name, soname, version, VER_NDX_LOCAL, NULL};
+            // sym.index = AddSym(s);
+            // CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
         }
     }
 
@@ -124,7 +126,7 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
 
 // Returns and fills st_value to index true when the symbol specified
 // with (name, soname, version) is defined.
-bool SymtabBuilder::ResolveCopy(const std::string& name, const std::string& soname, const std::string version, uintptr_t* index) {
+bool SymtabBuilder::ResolveCopy(const std::string& name, const std::string& soname, const std::string version, uintptr_t* val_or_index) {
     // TODO(hamaji): Refactor.
     Symbol sym{};
     sym.sym.st_name = 0;
@@ -168,11 +170,16 @@ bool SymtabBuilder::ResolveCopy(const std::string& name, const std::string& sona
     }
 
     if (!IsDefined(sym.sym)) {
-        *index = sym.index;
+        *val_or_index = sym.index;
         return false;
     } else {
-        *index = sym.index;
+        *val_or_index = sym.sym.st_value;
+        // Destination
+        std::cerr << SOLD_LOG_KEY(name) << SOLD_LOG_BITS(sym.sym.st_value) << std::endl;
         return true;
+        // current master
+        // *val_or_index = sym.index;
+        // return false;
     }
 }
 

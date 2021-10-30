@@ -194,9 +194,19 @@ void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename
         syms_.push_back(Syminfo{symname, soname, version, v, sym});
         CHECK(duplicate_check.insert({symname, soname, version}).second)
             << SOLD_LOG_KEY(symname) << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
+        const void* symp = nullptr;
+        if (IsAddrInBinary(sym->st_value)) {
+            symp = reinterpret_cast<const void*>(head() + OffsetFromAddr(sym->st_value));
+        }
+        LOG(INFO) << SOLD_LOG_BITS(symp) << SOLD_LOG_BITS(sym->st_size);
+        if (symname == "hoge_var") {
+            LOG(INFO) << SOLD_LOG_BITS(*reinterpret_cast<const uint32_t*>(symp));
+        }
+        symps_.emplace_back(symp);
         LOG(INFO) << "duplicate_check: " << SOLD_LOG_KEY(symname) << SOLD_LOG_KEY(version);
     }
 
+    CHECK_EQ(syms_.size(), symps_.size());
     LOG(INFO) << "nsyms_ = " << nsyms_;
 }
 
@@ -589,6 +599,19 @@ void ELFBinary::ParseFuncArray(uintptr_t* array, uintptr_t size, std::vector<uin
     for (size_t i = 0; i < size / sizeof(uintptr_t); ++i) {
         out->push_back(array[i]);
     }
+}
+
+// TODO(akawashiro): Merge with OffsetFromAddr
+bool ELFBinary::IsAddrInBinary(const Elf_Addr addr) const {
+    for (Elf_Phdr* phdr : loads_) {
+        if (phdr->p_vaddr <= addr && addr < phdr->p_vaddr + phdr->p_memsz) {
+            return true;
+        }
+    }
+    if (tls() != nullptr && tls()->p_vaddr == addr) {
+        return true;
+    }
+    return false;
 }
 
 Elf_Addr ELFBinary::OffsetFromAddr(const Elf_Addr addr) const {

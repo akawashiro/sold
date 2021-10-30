@@ -108,6 +108,7 @@ public:
 
     std::pair<std::string, std::string> GetVersion(int index, const std::map<std::string, std::string>& filename_to_soname);
 
+    bool IsAddrInBinary(const Elf_Addr addr) const;
     Elf_Addr OffsetFromAddr(const Elf_Addr addr) const;
     Elf_Addr AddrFromOffset(const Elf_Addr offset) const;
 
@@ -160,9 +161,11 @@ private:
     std::vector<uintptr_t> init_array_;
     std::vector<uintptr_t> fini_array_;
 
-    // This is the name on the filsysytem
+    // This is the name on the filesystem
     std::string name_;
     std::vector<Syminfo> syms_;
+    // Addresses of locations which symbols refer to
+    std::vector<const void*> symps_;
 
     int nsyms_{0};
 
