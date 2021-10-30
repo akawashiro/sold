@@ -746,7 +746,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                 // newrel.r_info = ELF_R_INFO(val_or_index, type);
 
                 bool is_defined = syms_.ResolveCopy(name, soname, version_name, &val_or_index);
-                if (is_defined && is_executable_) {
+                if (is_defined && is_executable_ && false) {
                     const void* reloc_src = nullptr;
                     for (const ELFBinary* bin : link_binaries_) {
                         if (bin == main_binary_.get()) continue;
