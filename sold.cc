@@ -732,9 +732,25 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                 // syms_.ResolveCopy(name, soname, version_name, &val_or_index);
                 // newrel.r_info = ELF_R_INFO(val_or_index, type);
 
-                if (syms_.ResolveCopy(name, soname, version_name, &val_or_index)) {
-                    newrel.r_info = ELF_R_INFO(0, R_X86_64_IRELATIVE);
-                    newrel.r_addend = val_or_index;
+                bool is_defined = syms_.ResolveCopy(name, soname, version_name, &val_or_index);
+                if (is_defined && is_executable_) {
+                    const void* reloc_src = nullptr;
+                    for (const ELFBinary* bin : link_binaries_) {
+                        if (bin == main_binary_.get()) continue;
+                        for (int i = 0; i < bin->GetSymbolMap().size(); i++) {
+                            const Syminfo& s = bin->GetSymbolMap()[i];
+                            if (s.name == name && s.soname == soname && s.version == version_name) {
+                                reloc_src = bin->symps()[i];
+                            }
+                        }
+                    }
+                    CHECK(reloc_src != nullptr);
+                    void* reloc_dest = reinterpret_cast<void*>(bin->head_mut() + bin->OffsetFromAddr(rel->r_offset));
+                    std::cerr << SOLD_LOG_BITS(*reinterpret_cast<const uint32_t*>(reloc_src)) << SOLD_LOG_KEY(sym->st_size)
+                              << SOLD_LOG_BITS(rel->r_offset) << SOLD_LOG_BITS(bin->OffsetFromAddr(rel->r_offset))
+                              << SOLD_LOG_BITS(*reinterpret_cast<const uint32_t*>(reloc_dest)) << std::endl;
+                    memcpy(reloc_dest, reloc_src, sym->st_size);
+                    goto skip_newrel;
                 } else {
                     newrel.r_info = ELF_R_INFO(val_or_index, type);
                 }
@@ -747,6 +763,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
         }
 
         rels_.push_back(newrel);
+    skip_newrel:;
     }
 }
 
