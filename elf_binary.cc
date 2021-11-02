@@ -72,15 +72,20 @@ Range ELFBinary::GetRange() const {
 }
 
 bool ELFBinary::IsAddrInInitarray(uintptr_t addr) const {
-    CHECK(init_array_addr_ != 0);
+    CHECK(init_array_addr_ != 0) << SOLD_LOG_KEY(filename_);
     LOG(INFO) << SOLD_LOG_BITS(addr) << SOLD_LOG_BITS(init_array_addr_) << SOLD_LOG_BITS(init_arraysz_);
     return reinterpret_cast<uintptr_t>(init_array_addr_) <= addr && addr < reinterpret_cast<uintptr_t>(init_array_addr_ + init_arraysz_);
 }
 
 bool ELFBinary::IsAddrInFiniarray(uintptr_t addr) const {
-    CHECK(fini_array_addr_ != 0);
-    LOG(INFO) << SOLD_LOG_BITS(addr) << SOLD_LOG_BITS(fini_array_addr_) << SOLD_LOG_BITS(fini_arraysz_);
-    return reinterpret_cast<uintptr_t>(fini_array_addr_) <= addr && addr < reinterpret_cast<uintptr_t>(fini_array_addr_ + fini_arraysz_);
+    if (fini_array_addr_ != 0) {
+        LOG(INFO) << SOLD_LOG_BITS(addr) << SOLD_LOG_BITS(fini_array_addr_) << SOLD_LOG_BITS(fini_arraysz_);
+        return reinterpret_cast<uintptr_t>(fini_array_addr_) <= addr &&
+               addr < reinterpret_cast<uintptr_t>(fini_array_addr_ + fini_arraysz_);
+    } else {
+        LOG(WARNING) << SOLD_LOG_KEY(fini_array_addr_);
+        return false;
+    }
 }
 
 bool ELFBinary::IsVaddrInTLSData(uintptr_t vaddr) const {
@@ -257,7 +262,12 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index, const std::
                         if (found != filename_to_soname.end()) {
                             return std::make_pair(found->second, std::string(strtab_ + vna->vna_name));
                         } else {
-                            LOG(FATAL) << "There is no entry for " << filename << " in filename_to_soname.";
+                            std::string s = "{";
+                            for (auto i : filename_to_soname) {
+                                s += i.first + ":" + i.second + ", ";
+                            }
+                            s += "}";
+                            LOG(FATAL) << "There is no entry for " << filename << " in filename_to_soname=" << s << ".";
                         }
                     }
 
@@ -275,7 +285,8 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index, const std::
                 if (vd->vd_flags & VER_FLG_BASE) {
                     soname = std::string(strtab_ + vda->vda_name);
                 }
-                if (vd->vd_ndx == versym_[index]) {
+                LOG(INFO) << SOLD_LOG_BITS(vd->vd_ndx);
+                if (vd->vd_ndx == (VERSYM_VERSION & versym_[index])) {
                     version = std::string(strtab_ + vda->vda_name);
                 }
 
@@ -287,7 +298,7 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index, const std::
             }
         }
 
-        LOG(WARNING) << "Find no entry corresponds to " << versym_[index];
+        LOG(WARNING) << "Find no entry corresponds to " << SOLD_LOG_BITS(versym_[index]);
         return std::make_pair("", "");
     }
 }

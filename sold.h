@@ -266,6 +266,7 @@ private:
 
     void EmitCode(FILE* fp) {
         CHECK(ftell(fp) == CodeOffset());
+        std::set<int> processed_reloc_copy_index;
         for (int i = 0; i < loads_.size(); i++) {
             const Load& load = loads_[i];
             ELFBinary* bin = load.bin;
@@ -285,7 +286,8 @@ private:
             if (!emit_bss) {
                 LOG(INFO) << SOLD_LOG_BITS(load.emit.p_vaddr + load.emit.p_memsz) << SOLD_LOG_BITS(loads_[i + 1].emit.p_vaddr);
             }
-            for (auto t : reloc_copy_) {
+            for (int j = 0; j < reloc_copy_.size(); j++) {
+                auto t = reloc_copy_[j];
                 uintptr_t reloc_dest = std::get<0>(t);
                 const void* reloc_src = std::get<1>(t);
                 Elf_Xword reloc_size = std::get<2>(t);
@@ -294,13 +296,26 @@ private:
                     (load.emit.p_vaddr + load.emit.p_filesz) <= reloc_dest && reloc_dest < (load.emit.p_vaddr + load.emit.p_memsz);
                 LOG(INFO) << SOLD_LOG_BITS(reloc_dest) << SOLD_LOG_BITS(load.emit.p_offset) << SOLD_LOG_BITS(load.emit.p_memsz)
                           << SOLD_LOG_BITS(load.emit.p_vaddr) << SOLD_LOG_KEY(in_load) << SOLD_LOG_KEY(in_bss) << SOLD_LOG_KEY(emit_bss)
-                          << SOLD_LOG_BITS(load.orig->p_offset);
+                          << SOLD_LOG_BITS(load.orig->p_offset) << SOLD_LOG_BITS(reloc_size);
                 if (in_load) {
+                    if (reloc_size == 1) {
+                        LOG(INFO) << SOLD_LOG_BITS(*reinterpret_cast<const uint8_t*>(reloc_src));
+                    } else if (reloc_size == 2) {
+                        LOG(INFO) << SOLD_LOG_BITS(*reinterpret_cast<const uint16_t*>(reloc_src));
+                    } else if (reloc_size == 4) {
+                        LOG(INFO) << SOLD_LOG_BITS(*reinterpret_cast<const uint32_t*>(reloc_src));
+                    } else if (reloc_size == 8) {
+                        LOG(INFO) << SOLD_LOG_BITS(*reinterpret_cast<const uint64_t*>(reloc_src));
+                    } else {
+                        LOG(FATAL) << SOLD_LOG_BITS(reloc_size);
+                    }
                     CHECK(reloc_dest - load.emit.p_vaddr + load.emit.p_offset + reloc_size <= ftell(fp));
+                    CHECK(processed_reloc_copy_index.insert(j).second);
                     MemcpyFile(fp, reloc_dest - load.emit.p_vaddr + load.emit.p_offset, reloc_src, reloc_size);
                 }
             }
         }
+        CHECK_EQ(processed_reloc_copy_index.size(), reloc_copy_.size());
     }
 
     // Emit TLS initialization image
@@ -345,20 +360,21 @@ private:
         LOG(INFO) << "CollectSymbols";
 
         std::vector<Syminfo> syms;
-        for (ELFBinary* bin : link_binaries_) {
-            LoadDynSymtab(bin, syms, true);
-        }
-        // Hmm, This is maybe wrong.
         // for (ELFBinary* bin : link_binaries_) {
-        //     if (is_executable_ && bin == main_binary_.get()) {
-        //         continue;
-        //     } else {
-        //         LoadDynSymtab(bin, syms, true);
-        //     }
+        //     LoadDynSymtab(bin, syms, true);
         // }
-        // if (is_executable_) {
-        //     LoadDynSymtab(main_binary_.get(), syms, false);
-        // }
+
+        // Hmm, This is maybe wrong.
+        for (ELFBinary* bin : link_binaries_) {
+            if (is_executable_ && bin == main_binary_.get()) {
+                continue;
+            } else {
+                LoadDynSymtab(bin, syms, true);
+            }
+        }
+        if (is_executable_) {
+            LoadDynSymtab(main_binary_.get(), syms, false);
+        }
         for (auto s : syms) {
             LOG(INFO) << "SYM " << s.name;
         }
@@ -476,12 +492,12 @@ private:
     };
 
     std::vector<std::string> EXCLUDE_SHARED_OBJECTS = {
+        "ld-linux",        // GPL (glibc)
         "libc.so",         // GPL (glibc)
         "libm.so",         // GPL (glibc)
         "libdl.so",        // GPL (glibc)
         "librt.so",        // GPL (glibc)
         "libpthread.so",   // GPL (glibc)
-        "ld-linux",        // GPL (glibc)
         "libutil.so",      // GPL (glibc)
         "libgcc_s.so",     // GPL (gcc)
         "libstdc++.so",    // GPL (gcc)
@@ -493,6 +509,21 @@ private:
         "libltdl.so",      // LGPL (libtool)
         "libcuda.so",      // NVIDIA Software License Agreement and CUDA Supplement to Software License Agreement (CUDA)
         "libopenblas.so",  // BSD (OpenBLAS) TODO(akawashiro) Including libopenblas.so causes SEGV.
+        // nvim
+        // "libnsl.so.3",     //
+        //"libtirpc.so.3",        //
+        // "libgssapi_krb5.so.2",  //
+        // "libkrb5.so.3",         // Cause SEGV
+        // "libkrb5support.so.0",  //
+        // "libk5crypto.so.3",     //
+        // "libcom_err.so.2",      //
+        // "libkeyutils.so.1",     //
+        // "libresolv.so.2",  // Cause SEGV
+        // vim
+        // "libnss_files.so",
+        // "libncursesw.so",
+        // "libacl.so",
+        // "libgpm.so"
     };
     Elf64_Half machine_type;
     std::unique_ptr<ELFBinary> main_binary_;
