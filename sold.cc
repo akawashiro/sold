@@ -143,7 +143,7 @@ void Sold::BuildLoads() {
 
             file_offset += phdr->p_vaddr & 0xfff;
             load.emit.p_offset = file_offset;
-            file_offset = AlignNext(file_offset + phdr->p_filesz);
+            file_offset = AlignNext(file_offset + phdr->p_memsz);
             load.emit.p_vaddr += offset;
             load.emit.p_paddr += offset;
             // TODO(hamaji): Add PF_W only for GOT.
