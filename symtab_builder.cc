@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iostream>
 #include <limits>
 #include <set>
 
@@ -30,6 +31,7 @@ SymtabBuilder::SymtabBuilder() {
     si.sym = NULL;
 
     Symbol sym{};
+    sym.sym.st_size = 0;
 
     AddSym(si);
     CHECK(syms_.emplace(std::make_tuple("", "", ""), sym).second);
@@ -75,6 +77,11 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
 
     auto found = syms_.find({name, soname, version});
     if (found != syms_.end()) {
+        std::string s;
+        for (const auto& t : syms_) {
+            s += std::get<0>(t.first) + ", ";
+        }
+        LOG(INFO) << SOLD_LOG_KEY(name) << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version) << SOLD_LOG_KEY(found->second.index) << s;
         sym = found->second;
     } else {
         Elf_Versym versym = 0;
@@ -106,10 +113,10 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
                 CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
             }
         } else {
-            LOG(INFO) << "Symbol (" << name << ", " << soname << ", " << version << ") not found";
-            Syminfo s{name, soname, version, VER_NDX_LOCAL, NULL};
-            sym.index = AddSym(s);
-            CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
+            LOG(FATAL) << "Symbol (" << name << ", " << soname << ", " << version << ") not found";
+            // Syminfo s{name, soname, version, VER_NDX_LOCAL, NULL};
+            // sym.index = AddSym(s);
+            // CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
         }
     }
 
