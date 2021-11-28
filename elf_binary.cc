@@ -597,6 +597,19 @@ void ELFBinary::ParseFuncArray(uintptr_t* array, uintptr_t size, std::vector<uin
     }
 }
 
+// TODO(akawashiro): Merge with OffsetFromAddr
+bool ELFBinary::IsAddrInBinary(const Elf_Addr addr) const {
+    for (Elf_Phdr* phdr : loads_) {
+        if (phdr->p_vaddr <= addr && addr < phdr->p_vaddr + phdr->p_memsz) {
+            return true;
+        }
+    }
+    if (tls() != nullptr && tls()->p_vaddr == addr) {
+        return true;
+    }
+    return false;
+}
+
 Elf_Addr ELFBinary::OffsetFromAddr(const Elf_Addr addr) const {
     for (Elf_Phdr* phdr : loads_) {
         if (phdr->p_vaddr <= addr && addr < phdr->p_vaddr + phdr->p_memsz) {
