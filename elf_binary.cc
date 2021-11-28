@@ -290,7 +290,7 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index, const std::
             }
         }
 
-        LOG(WARNING) << "Find no entry corresponds to " << versym_[index];
+        LOG(WARNING) << "Find no entry corresponds to " << SOLD_LOG_BITS(versym_[index]);
         return std::make_pair("", "");
     }
 }
