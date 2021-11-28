@@ -199,9 +199,16 @@ void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename
         syms_.push_back(Syminfo{symname, soname, version, v, sym});
         CHECK(duplicate_check.insert({symname, soname, version}).second)
             << SOLD_LOG_KEY(symname) << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
+        const void* symp = nullptr;
+        if (IsAddrInBinary(sym->st_value)) {
+            symp = reinterpret_cast<const void*>(head() + OffsetFromAddr(sym->st_value));
+        }
+        LOG(INFO) << SOLD_LOG_BITS(symp) << SOLD_LOG_BITS(sym->st_size);
+        symps_.emplace_back(symp);
         LOG(INFO) << "duplicate_check: " << SOLD_LOG_KEY(symname) << SOLD_LOG_KEY(version);
     }
 
+    CHECK_EQ(syms_.size(), symps_.size());
     LOG(INFO) << "nsyms_ = " << nsyms_;
 }
 

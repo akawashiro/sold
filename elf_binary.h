@@ -75,6 +75,7 @@ public:
     const std::vector<uintptr_t>& fini_array() const { return fini_array_; }
 
     const std::vector<Syminfo>& GetSymbolMap() const { return syms_; }
+    const std::vector<const void*> symps() const { return symps_; }
 
     Range GetRange() const;
 
@@ -164,6 +165,8 @@ private:
     // This is the name on the filsysytem
     std::string name_;
     std::vector<Syminfo> syms_;
+    // Addresses of locations which symbols refer to
+    std::vector<const void*> symps_;
 
     int nsyms_{0};
 
