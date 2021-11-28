@@ -657,8 +657,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                     break;
                 }
 
-                uint64_t* mod_on_got =
-                    reinterpret_cast<uint64_t*>(bin->head_mut() + bin->OffsetFromAddr(rel->r_offset));
+                uint64_t* mod_on_got = reinterpret_cast<uint64_t*>(bin->head_mut() + bin->OffsetFromAddr(rel->r_offset));
                 uint64_t* offset_on_got = mod_on_got + 1;
                 const bool is_bss = bin->IsOffsetInTLSBSS(*offset_on_got);
 
