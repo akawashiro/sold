@@ -738,8 +738,32 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
 
             case R_X86_64_COPY: {
                 const std::string name = bin->Str(sym->st_name);
-                uintptr_t index = syms_.ResolveCopy(name, soname, version_name);
-                newrel.r_info = ELF_R_INFO(index, type);
+                uintptr_t val_or_index;
+
+                bool is_defined = syms_.ResolveCopy(name, soname, version_name, &val_or_index);
+                if (is_defined && is_executable_) {
+                    const void* reloc_src = nullptr;
+                    for (const ELFBinary* bin : link_binaries_) {
+                        if (bin == main_binary_.get()) continue;
+                        for (int i = 0; i < bin->GetSymbolMap().size(); i++) {
+                            const Syminfo& s = bin->GetSymbolMap()[i];
+                            if (s.name == name && s.soname == soname && s.version == version_name) {
+                                reloc_src = bin->symps()[i];
+                            }
+                        }
+                    }
+
+                    if (reloc_src != nullptr) {
+                        CHECK(reloc_src != nullptr) << name;
+                        void* reloc_dest = reinterpret_cast<void*>(bin->head_mut() + bin->OffsetFromAddr(rel->r_offset));
+                        reloc_copy_.emplace_back(std::make_tuple(newrel.r_offset, reloc_src, sym->st_size));
+                        goto skip_newrel;
+                    } else {
+                        newrel.r_info = ELF_R_INFO(val_or_index, type);
+                    }
+                } else {
+                    newrel.r_info = ELF_R_INFO(val_or_index, type);
+                }
                 break;
             }
 
@@ -751,6 +775,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
         LOG(INFO) << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend) << " " << ShowRelocationType(type) << " "
                   << SOLD_LOG_BITS(rel->r_addend) << SOLD_LOG_BITS(rel->r_offset);
         rels_.push_back(newrel);
+    skip_newrel:;
     }
 }
 
