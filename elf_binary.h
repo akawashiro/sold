@@ -162,7 +162,7 @@ private:
     std::vector<uintptr_t> init_array_;
     std::vector<uintptr_t> fini_array_;
 
-    // This is the name on the filsysytem
+    // This is the name on the filesystem
     std::string name_;
     std::vector<Syminfo> syms_;
     // Addresses of locations which symbols refer to
