@@ -399,7 +399,7 @@ void Sold::DecideMemOffset() {
         const Range range = bin->GetRange() + offset;
         CHECK(range.start == offset) << "sold cannot handle other than shared objects.";
         offsets_.emplace(bin, range.start);
-        LOG(INFO) << "Assigned: " << bin->soname() << " " << HexString(range.start, 8) << "-" << HexString(range.end, 8);
+        LOG(INFO) << "Assigned: " << bin->filename() << " " << HexString(range.start, 8) << "-" << HexString(range.end, 8);
         offset = range.end;
     }
     tls_offset_ = offset;
@@ -527,6 +527,7 @@ void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab, bool load
 // Push all global symbols of main_binary_ into public_syms_.
 // Push all TLS symbols into public_syms_.
 // TODO(akawashiro) Does public_syms_ overlap with exposed_syms_?
+// TODO(akawashiro): Is this working?
 void Sold::CopyPublicSymbols() {
     for (const auto& p : main_binary_->GetSymbolMap()) {
         const Elf_Sym* sym = p.sym;
@@ -597,7 +598,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
         newrels.emplace_back(newrel);
     }
 
-    LOG(INFO) << "Relocate " << bin->Str(sym->st_name) << " at " << rel->r_offset;
+    LOG(INFO) << "Relocate " << bin->Str(sym->st_name) << " at " << rel->r_offset << " type=" << ShowRelocationType(type);
 
     for (auto newrel : newrels) {
         // Even if we found a defined symbol in src_syms_, we cannot
@@ -612,6 +613,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                            "symbol, something wrong may have happened.";
                 }
                 newrel.r_addend += offset;
+                LOG(INFO) << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend);
                 break;
             }
 
@@ -621,9 +623,12 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                 if (syms_.Resolve(bin->Str(sym->st_name), soname, version_name, val_or_index)) {
                     newrel.r_info = ELF_R_INFO(0, R_X86_64_RELATIVE);
                     newrel.r_addend = val_or_index;
+
+                    LOG(INFO) << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend);
                 } else {
                     newrel.r_info = ELF_R_INFO(val_or_index, type);
                 }
+                LOG(INFO) << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend);
                 break;
             }
 
@@ -635,6 +640,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                 } else {
                     newrel.r_info = ELF_R_INFO(val_or_index, type);
                 }
+                LOG(INFO) << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend);
                 break;
             }
 
@@ -742,6 +748,8 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                 CHECK(false);
         }
 
+        LOG(INFO) << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend) << " " << ShowRelocationType(type) << " "
+                  << SOLD_LOG_BITS(rel->r_addend) << SOLD_LOG_BITS(rel->r_offset);
         rels_.push_back(newrel);
     }
 }
