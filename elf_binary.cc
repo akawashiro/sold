@@ -277,7 +277,8 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index, const std::
                 if (vd->vd_flags & VER_FLG_BASE) {
                     soname = std::string(strtab_ + vda->vda_name);
                 }
-                if (vd->vd_ndx == versym_[index]) {
+                LOG(INFO) << SOLD_LOG_BITS(vd->vd_ndx);
+                if (vd->vd_ndx == (VERSYM_VERSION & versym_[index])) {
                     version = std::string(strtab_ + vda->vda_name);
                 }
 
