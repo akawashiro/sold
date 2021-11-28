@@ -266,14 +266,56 @@ private:
 
     void EmitCode(FILE* fp) {
         CHECK(ftell(fp) == CodeOffset());
-        for (const Load& load : loads_) {
+        std::set<int> processed_reloc_copy_index;
+        for (int i = 0; i < loads_.size(); i++) {
+            const Load& load = loads_[i];
             ELFBinary* bin = load.bin;
             Elf_Phdr* phdr = load.orig;
             LOG(INFO) << "Emitting code of " << bin->name() << " from " << HexString(ftell(fp)) << " => " << HexString(load.emit.p_offset)
                       << " + " << HexString(phdr->p_filesz);
             EmitPad(fp, load.emit.p_offset);
             WriteBuf(fp, bin->head() + phdr->p_offset, phdr->p_filesz);
+            // To process reloc_copy_, try to emit bss section as much as possible
+            bool emit_bss = (i == loads_.size() - 1) || load.emit.p_vaddr + load.emit.p_memsz <= loads_[i + 1].emit.p_vaddr;
+            if (emit_bss) {
+                EmitPad(fp, load.emit.p_offset + load.emit.p_memsz);
+            } else {
+                CHECK_GT(loads_.size() - 1, i);
+                EmitPad(fp, loads_[i + 1].emit.p_offset);
+            }
+            if (!emit_bss) {
+                LOG(INFO) << SOLD_LOG_BITS(load.emit.p_vaddr + load.emit.p_memsz) << SOLD_LOG_BITS(loads_[i + 1].emit.p_vaddr);
+            }
+            for (int j = 0; j < reloc_copy_.size(); j++) {
+                auto t = reloc_copy_[j];
+                uintptr_t reloc_dest = std::get<0>(t);
+                const void* reloc_src = std::get<1>(t);
+                Elf_Xword reloc_size = std::get<2>(t);
+                bool in_load = load.emit.p_vaddr <= reloc_dest && reloc_dest < (load.emit.p_vaddr + load.emit.p_memsz);
+                bool in_bss =
+                    (load.emit.p_vaddr + load.emit.p_filesz) <= reloc_dest && reloc_dest < (load.emit.p_vaddr + load.emit.p_memsz);
+                LOG(INFO) << SOLD_LOG_BITS(reloc_dest) << SOLD_LOG_BITS(load.emit.p_offset) << SOLD_LOG_BITS(load.emit.p_memsz)
+                          << SOLD_LOG_BITS(load.emit.p_vaddr) << SOLD_LOG_KEY(in_load) << SOLD_LOG_KEY(in_bss) << SOLD_LOG_KEY(emit_bss)
+                          << SOLD_LOG_BITS(load.orig->p_offset) << SOLD_LOG_BITS(reloc_size);
+                if (in_load) {
+                    if (reloc_size == 1) {
+                        LOG(INFO) << SOLD_LOG_BITS(*reinterpret_cast<const uint8_t*>(reloc_src));
+                    } else if (reloc_size == 2) {
+                        LOG(INFO) << SOLD_LOG_BITS(*reinterpret_cast<const uint16_t*>(reloc_src));
+                    } else if (reloc_size == 4) {
+                        LOG(INFO) << SOLD_LOG_BITS(*reinterpret_cast<const uint32_t*>(reloc_src));
+                    } else if (reloc_size == 8) {
+                        LOG(INFO) << SOLD_LOG_BITS(*reinterpret_cast<const uint64_t*>(reloc_src));
+                    } else {
+                        LOG(FATAL) << SOLD_LOG_BITS(reloc_size);
+                    }
+                    CHECK(reloc_dest - load.emit.p_vaddr + load.emit.p_offset + reloc_size <= ftell(fp));
+                    CHECK(processed_reloc_copy_index.insert(j).second);
+                    MemcpyFile(fp, reloc_dest - load.emit.p_vaddr + load.emit.p_offset, reloc_src, reloc_size);
+                }
+            }
         }
+        CHECK_EQ(processed_reloc_copy_index.size(), reloc_copy_.size());
     }
 
     // Emit TLS initialization image
@@ -470,4 +512,6 @@ private:
     std::map<ELFBinary*, uintptr_t> bin_to_init_array_offset_;
     std::map<ELFBinary*, uintptr_t> bin_to_fini_array_offset_;
     TLS tls_;
+    // <Address, source, size>
+    std::vector<std::tuple<uintptr_t, const void*, Elf64_Xword>> reloc_copy_;
 };
