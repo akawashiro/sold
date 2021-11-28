@@ -32,7 +32,7 @@ public:
 
     bool Resolve(const std::string& name, const std::string& filename, const std::string version_name, uintptr_t& val_or_index);
 
-    uintptr_t ResolveCopy(const std::string& name, const std::string& filename, const std::string version_name);
+    bool ResolveCopy(const std::string& name, const std::string& soname, const std::string version, uintptr_t* index);
 
     void Build(StrtabBuilder& strtab, VersionBuilder& version);
 

@@ -122,8 +122,9 @@ bool SymtabBuilder::Resolve(const std::string& name, const std::string& soname, 
     }
 }
 
-// Returns the index of symbol(name, soname, version)
-uintptr_t SymtabBuilder::ResolveCopy(const std::string& name, const std::string& soname, const std::string version) {
+// Returns and fills st_value to index true when the symbol specified
+// with (name, soname, version) is defined.
+bool SymtabBuilder::ResolveCopy(const std::string& name, const std::string& soname, const std::string version, uintptr_t* val_or_index) {
     // TODO(hamaji): Refactor.
     Symbol sym{};
     sym.sym.st_name = 0;
@@ -162,12 +163,22 @@ uintptr_t SymtabBuilder::ResolveCopy(const std::string& name, const std::string&
             sym.index = AddSym(s);
             CHECK(syms_.emplace(std::make_tuple(name, soname, version), sym).second);
         } else {
-            LOG(INFO) << "Symbol " << name << " not found for copy";
-            CHECK(false);
+            LOG(FATAL) << "Symbol " << name << " not found for copy";
         }
     }
 
-    return sym.index;
+    if (!IsDefined(sym.sym)) {
+        *val_or_index = sym.index;
+        return false;
+    } else {
+        // *val_or_index = sym.sym.st_value;
+        // Destination
+        std::cerr << SOLD_LOG_KEY(name) << SOLD_LOG_BITS(sym.sym.st_value) << std::endl;
+        // current master
+        // return false;
+        *val_or_index = sym.index;
+        return true;
+    }
 }
 
 // Make a new symbol table(symtab_) from exposed_syms_.
