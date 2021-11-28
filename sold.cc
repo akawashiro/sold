@@ -279,8 +279,13 @@ void Sold::EmitPhdrs(FILE* fp) {
         phdrs.push_back(phdr);
     }
 
-    for (const Load& load : loads_) {
-        phdrs.push_back(load.emit);
+    // I agree this is very bad hack. But I need this to make reloc_copy_ working.
+    for (int i = 0; i < loads_.size(); i++) {
+        Elf_Phdr p = loads_[i].emit;
+        if (i == loads_.size() - 1 || loads_[i].emit.p_vaddr + loads_[i].emit.p_memsz <= loads_[i + 1].emit.p_vaddr) {
+            p.p_filesz = p.p_memsz;
+        }
+        phdrs.emplace_back(p);
     }
 
     if (tls_.memsz) {
