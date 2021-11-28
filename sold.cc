@@ -477,7 +477,7 @@ uintptr_t Sold::RemapTLS(const char* msg, ELFBinary* bin, uintptr_t off) {
 // Push symbols of bin to symtab.
 // When the same symbol is already in symtab, LoadDynSymtab selects a more
 // concretely defined one.
-void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab) {
+void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab, bool load_defined_syms) {
     bin->ReadDynSymtab(filename_to_soname_);
 
     uintptr_t offset = offsets_[bin];
@@ -485,6 +485,7 @@ void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab) {
     for (const auto& p : bin->GetSymbolMap()) {
         const std::string& name = p.name;
         Elf_Sym* sym = p.sym;
+        if (!load_defined_syms && IsDefined(*sym)) continue;
         if (IsTLS(*sym) && sym->st_shndx != SHN_UNDEF) {
             sym->st_value = RemapTLS("symbol", bin, sym->st_value);
         } else if (sym->st_value) {

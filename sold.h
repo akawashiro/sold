@@ -361,8 +361,9 @@ private:
 
         std::vector<Syminfo> syms;
         for (ELFBinary* bin : link_binaries_) {
-            LoadDynSymtab(bin, syms);
+            LoadDynSymtab(bin, syms, true);
         }
+
         for (auto s : syms) {
             LOG(INFO) << "SYM " << s.name;
         }
@@ -389,7 +390,7 @@ private:
 
     uintptr_t RemapTLS(const char* msg, ELFBinary* bin, uintptr_t off);
 
-    void LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab);
+    void LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab, bool load_defined_syms);
 
     void CopyPublicSymbols();
 
