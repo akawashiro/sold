@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
     if (lib_add_42_via_base(10) != 52) abort();
     if (in_both_lib_and_base() != 100) abort();
 
-    // fprintf(stderr, "Use stderr from main\n");
+    fprintf(stderr, "Use stderr from main\n");
     lib_use_stderr();
 
     if (g_init != 42) abort();
