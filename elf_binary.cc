@@ -80,7 +80,10 @@ bool ELFBinary::IsAddrInInitarray(uintptr_t addr) const {
 }
 
 bool ELFBinary::IsAddrInFiniarray(uintptr_t addr) const {
-    CHECK(fini_array_addr_ != 0);
+    if(fini_array_addr_== 0){
+        LOG(WARNING) << SOLD_LOG_KEY(fini_array_addr_) << SOLD_LOG_KEY(filename_);
+        return false;
+    }
     LOG(INFO) << SOLD_LOG_BITS(addr) << SOLD_LOG_BITS(fini_array_addr_) << SOLD_LOG_BITS(fini_arraysz_);
     return reinterpret_cast<uintptr_t>(fini_array_addr_) <= addr && addr < reinterpret_cast<uintptr_t>(fini_array_addr_ + fini_arraysz_);
 }
