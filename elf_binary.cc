@@ -71,7 +71,10 @@ Range ELFBinary::GetRange() const {
 }
 
 bool ELFBinary::IsAddrInInitarray(uintptr_t addr) const {
-    CHECK(init_array_addr_ != 0) << SOLD_LOG_KEY(filename_);
+    if(init_array_addr_ == 0){
+        LOG(WARNING) << SOLD_LOG_KEY(init_array_addr_) << SOLD_LOG_KEY(filename_);
+        return false;
+    }
     LOG(INFO) << SOLD_LOG_BITS(addr) << SOLD_LOG_BITS(init_array_addr_) << SOLD_LOG_BITS(init_arraysz_);
     return reinterpret_cast<uintptr_t>(init_array_addr_) <= addr && addr < reinterpret_cast<uintptr_t>(init_array_addr_ + init_arraysz_);
 }
