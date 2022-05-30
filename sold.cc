@@ -132,7 +132,7 @@ void Sold::BuildEhdr() {
 
 void Sold::BuildLoads() {
     uintptr_t file_offset = CodeOffset();
-    CHECK(file_offset < offsets_[main_binary_.get()]);
+    CHECK_LT(file_offset, offsets_[main_binary_.get()]) << SOLD_LOG_BITS(file_offset) << SOLD_LOG_BITS(offsets_[main_binary_.get()]);
     for (ELFBinary* bin : link_binaries_) {
         uintptr_t offset = offsets_[bin];
         for (Elf_Phdr* phdr : bin->loads()) {
@@ -389,7 +389,7 @@ uintptr_t Sold::TLSMemSize() const {
 // Decide locations for each linked shared objects
 // TODO(akawashiro) Is the initial value of offset optimal?
 void Sold::DecideMemOffset() {
-    uintptr_t offset = 0x10000000;
+    uintptr_t offset = 0x80000000;
     for (ELFBinary* bin : link_binaries_) {
         const Range range = bin->GetRange() + offset;
         CHECK(range.start == offset) << "sold cannot handle other than shared objects.";
@@ -643,8 +643,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                     break;
                 }
 
-                uint64_t* mod_on_got =
-                    reinterpret_cast<uint64_t*>(bin->head_mut() + bin->OffsetFromAddr(rel->r_offset));
+                uint64_t* mod_on_got = reinterpret_cast<uint64_t*>(bin->head_mut() + bin->OffsetFromAddr(rel->r_offset));
                 uint64_t* offset_on_got = mod_on_got + 1;
                 const bool is_bss = bin->IsOffsetInTLSBSS(*offset_on_got);
 

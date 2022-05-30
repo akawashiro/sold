@@ -22,7 +22,7 @@ add_custom_target(
     GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i
     ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o
     ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.soldout --section-headers
-    --check-output && ln -sf libtorch_test.so.soldout libtorch_test.so
+    && ln -sf libtorch_test.so.soldout libtorch_test.so --exclude-so libcudart.so
   DEPENDS torch_test sold
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -32,8 +32,7 @@ add_custom_target(
   COMMAND
     GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i
     ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o
-    ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.wosection.soldout
-    --check-output
+    ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.wosection.soldout --exclude-so libcudart.so
   DEPENDS torch_test sold
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 

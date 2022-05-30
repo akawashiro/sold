@@ -213,29 +213,29 @@ private:
     void EmitGnuHash(FILE* fp);
 
     void EmitSymtab(FILE* fp) {
-        CHECK(ftell(fp) == SymtabOffset());
+        SOLD_CHECK_EQ(ftell(fp), SymtabOffset());
         for (const Elf_Sym& sym : syms_.Get()) {
             Write(fp, sym);
         }
     }
 
     void EmitVersym(FILE* fp) {
-        CHECK(ftell(fp) == VersymOffset());
+        SOLD_CHECK_EQ(ftell(fp), VersymOffset());
         version_.EmitVersym(fp);
     }
 
     void EmitVerneed(FILE* fp) {
-        CHECK(ftell(fp) == VerneedOffset());
+        SOLD_CHECK_EQ(ftell(fp), VerneedOffset());
         version_.EmitVerneed(fp, strtab_);
     }
 
     void EmitStrtab(FILE* fp) {
-        CHECK(ftell(fp) == StrtabOffset());
+        SOLD_CHECK_EQ(ftell(fp), StrtabOffset());
         WriteBuf(fp, strtab_.data(), strtab_.size());
     }
 
     void EmitRel(FILE* fp) {
-        CHECK(ftell(fp) == RelOffset());
+        SOLD_CHECK_EQ(ftell(fp), RelOffset());
         for (const Elf_Rel& rel : rels_) {
             Write(fp, rel);
         }
@@ -246,26 +246,26 @@ private:
         for (uintptr_t ptr : init_array_) {
             Write(fp, ptr);
         }
-        CHECK(ftell(fp) == FiniArrayOffset());
+        SOLD_CHECK_EQ(ftell(fp), FiniArrayOffset());
         for (uintptr_t ptr : fini_array_) {
             Write(fp, ptr);
         }
     }
 
     void EmitShstrtab(FILE* fp) {
-        CHECK(ftell(fp) == ShstrtabOffset());
+        SOLD_CHECK_EQ(ftell(fp), ShstrtabOffset());
         shdr_.EmitShstrtab(fp);
     }
 
     void EmitDynamic(FILE* fp) {
-        CHECK(ftell(fp) == DynamicOffset());
+        SOLD_CHECK_EQ(ftell(fp), DynamicOffset());
         for (const Elf_Dyn& dyn : dynamic_) {
             Write(fp, dyn);
         }
     }
 
     void EmitCode(FILE* fp) {
-        CHECK(ftell(fp) == CodeOffset());
+        SOLD_CHECK_EQ(ftell(fp), CodeOffset());
         for (const Load& load : loads_) {
             ELFBinary* bin = load.bin;
             Elf_Phdr* phdr = load.orig;
@@ -279,7 +279,7 @@ private:
     // Emit TLS initialization image
     void EmitTLS(FILE* fp) {
         EmitPad(fp, TLSOffset());
-        CHECK(ftell(fp) == TLSOffset());
+        SOLD_CHECK_EQ(ftell(fp), TLSOffset());
         for (TLS::Data data : tls_.data) {
             WriteBuf(fp, data.start, data.size);
         }
@@ -287,7 +287,7 @@ private:
 
     void EmitEHFrame(FILE* fp) {
         EmitPad(fp, EHFrameOffset());
-        CHECK(ftell(fp) == EHFrameOffset());
+        SOLD_CHECK_EQ(ftell(fp), EHFrameOffset());
         LOG(INFO) << SOLD_LOG_BITS(ftell(fp)) << SOLD_LOG_BITS(EHFrameOffset()) << SOLD_LOG_BITS(ehframe_builder_.Size());
         ehframe_builder_.Emit(fp);
     }
@@ -364,7 +364,7 @@ private:
     }
 
     void RelocateSymbols(ELFBinary* bin, const Elf_Rel* rels, size_t num) {
-        if (!rels) CHECK_EQ(0, num);
+        if (!rels) SOLD_CHECK_EQ(0, num);
         uintptr_t offset = offsets_[bin];
         if (bin->ehdr()->e_machine == EM_X86_64) {
             for (size_t i = 0; i < num; ++i) {
