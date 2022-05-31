@@ -206,6 +206,8 @@ private:
 
     void BuildArrays();
 
+    std::string BuildRunpath();
+
     void BuildDynamic();
 
     void EmitPhdrs(FILE* fp);

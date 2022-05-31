@@ -188,6 +188,16 @@ void Sold::BuildArrays() {
     rels_.emplace_back(mprotect_rel);
 }
 
+std::string Sold::BuildRunpath() {
+    std::string runpath;
+    for (const ELFBinary* b : link_binaries_) {
+        if (b->runpath() != "") {
+            runpath += b->runpath() + ":";
+        }
+    }
+    return runpath;
+}
+
 void Sold::BuildDynamic() {
     std::set<ELFBinary*> linked(link_binaries_.begin(), link_binaries_.end());
     std::set<std::string> neededs;
@@ -208,7 +218,7 @@ void Sold::BuildDynamic() {
         MakeDyn(DT_RPATH, AddStr(main_binary_->rpath()));
     }
     if (!main_binary_->runpath().empty()) {
-        MakeDyn(DT_RUNPATH, AddStr(main_binary_->runpath()));
+        MakeDyn(DT_RUNPATH, AddStr(BuildRunpath()));
     }
 
     if (uintptr_t ptr = main_binary_->init()) {
@@ -643,8 +653,7 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                     break;
                 }
 
-                uint64_t* mod_on_got =
-                    reinterpret_cast<uint64_t*>(bin->head_mut() + bin->OffsetFromAddr(rel->r_offset));
+                uint64_t* mod_on_got = reinterpret_cast<uint64_t*>(bin->head_mut() + bin->OffsetFromAddr(rel->r_offset));
                 uint64_t* offset_on_got = mod_on_got + 1;
                 const bool is_bss = bin->IsOffsetInTLSBSS(*offset_on_got);
 
