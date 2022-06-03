@@ -38,6 +38,7 @@ public:
     const std::vector<Elf_Phdr*> phdrs() const { return phdrs_; }
     std::vector<Elf_Phdr*> phdrs_mut() const { return phdrs_; }
     const std::vector<Elf_Phdr*> loads() const { return loads_; }
+    const Elf_Phdr* dynamic() const { return dynamic_; }
     const Elf_Phdr* tls() const { return tls_; }
     const Elf_Phdr* gnu_stack() const { return gnu_stack_; }
     const Elf_Phdr* gnu_relro() const { return gnu_relro_; }
@@ -126,6 +127,7 @@ private:
     Elf_Ehdr* ehdr_{nullptr};
     std::vector<Elf_Phdr*> phdrs_;
     std::vector<Elf_Phdr*> loads_;
+    Elf_Phdr* dynamic_{nullptr};
     Elf_Phdr* tls_{nullptr};
     Elf_Phdr* gnu_stack_{nullptr};
     Elf_Phdr* gnu_relro_{nullptr};

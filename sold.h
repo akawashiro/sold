@@ -16,6 +16,7 @@
 #include <libgen.h>
 #include <sys/stat.h>
 
+#include <cstring>
 #include <iostream>
 #include <map>
 #include <string>
@@ -36,7 +37,7 @@ class Sold {
 public:
     Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_finis,
          const std::vector<std::string> custome_library_path, const std::vector<std::string>& exclude_runpath_pattern,
-         bool emit_section_header);
+         bool emit_section_header, bool delete_unused_PT_DYNAMIC);
 
     void Link(const std::string& out_filename);
 
@@ -273,9 +274,24 @@ private:
             ELFBinary* bin = load.bin;
             Elf_Phdr* phdr = load.orig;
             LOG(INFO) << "Emitting code of " << bin->name() << " from " << HexString(ftell(fp)) << " => " << HexString(load.emit.p_offset)
-                      << " + " << HexString(phdr->p_filesz);
+                      << " + " << HexString(phdr->p_filesz) << SOLD_LOG_KEY(delete_unused_PT_DYNAMIC_);
             EmitPad(fp, load.emit.p_offset);
-            WriteBuf(fp, bin->head() + phdr->p_offset, phdr->p_filesz);
+
+            std::vector<char> buf(phdr->p_filesz, 0);
+            std::memcpy(buf.data(), bin->head() + phdr->p_offset, phdr->p_filesz);
+            if (bin->dynamic() != nullptr && delete_unused_PT_DYNAMIC_) {
+                const Elf_Phdr* d = bin->dynamic();
+                LOG(INFO) << SOLD_LOG_BITS(phdr->p_offset) << SOLD_LOG_BITS(d->p_offset) << SOLD_LOG_BITS(d->p_offset + d->p_filesz)
+                          << SOLD_LOG_BITS(phdr->p_offset + phdr->p_filesz);
+                if (phdr->p_offset <= d->p_offset && d->p_offset + d->p_filesz <= phdr->p_offset + phdr->p_filesz) {
+                    LOG(INFO) << "Delete unused PT_DYNAMIC: " << SOLD_LOG_KEY(d->p_offset - phdr->p_offset)
+                              << SOLD_LOG_KEY(d->p_offset - phdr->p_offset + d->p_filesz);
+                    for (int i = d->p_offset - phdr->p_offset; i < d->p_offset - phdr->p_offset + d->p_filesz; i++) {
+                        buf[i] = 0;
+                    }
+                }
+            }
+            WriteBuf(fp, buf.data(), phdr->p_filesz);
         }
     }
 
@@ -457,6 +473,7 @@ private:
     uintptr_t mprotect_offset_{0};
     bool is_executable_{false};
     bool emit_section_header_;
+    bool delete_unused_PT_DYNAMIC_{false};
 
     uintptr_t interp_offset_;
     SymtabBuilder syms_;

@@ -71,7 +71,7 @@ Range ELFBinary::GetRange() const {
 }
 
 bool ELFBinary::IsAddrInInitarray(uintptr_t addr) const {
-    if(init_array_addr_ == 0){
+    if (init_array_addr_ == 0) {
         LOG(WARNING) << SOLD_LOG_KEY(init_array_addr_) << SOLD_LOG_KEY(filename_);
         return false;
     }
@@ -80,7 +80,7 @@ bool ELFBinary::IsAddrInInitarray(uintptr_t addr) const {
 }
 
 bool ELFBinary::IsAddrInFiniarray(uintptr_t addr) const {
-    if(fini_array_addr_== 0){
+    if (fini_array_addr_ == 0) {
         LOG(WARNING) << SOLD_LOG_KEY(fini_array_addr_) << SOLD_LOG_KEY(filename_);
         return false;
     }
@@ -346,6 +346,7 @@ void ELFBinary::ParsePhdrs() {
 
     for (Elf_Phdr* phdr : phdrs_) {
         if (phdr->p_type == PT_DYNAMIC) {
+            dynamic_ = phdr;
             ParseDynamic(phdr->p_offset, phdr->p_filesz);
         } else if (phdr->p_type == PT_INTERP) {
             LOG(INFO) << "Found PT_INTERP.";
