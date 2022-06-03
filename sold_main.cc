@@ -28,6 +28,7 @@ Options:
 --section-headers               Emit section headers
 --check-output                  Check the output using sold itself
 --exclude-from-fini             Do not use .fini_array of the ELF file
+--exclude-runpath-contains      Exclude paths from DT_RUNPATH contains the argument
 
 The last argument is interpreted as SOURCE_FILE when -i option isn't given.
 )" << std::endl;
@@ -45,6 +46,7 @@ int main(int argc, char* const argv[]) {
         {"section-headers", no_argument, nullptr, 1},
         {"check-output", no_argument, nullptr, 2},
         {"exclude-from-fini", required_argument, nullptr, 3},
+        {"exclude-runpath-contains", required_argument, nullptr, '4'},
         {0, 0, 0, 0},
     };
 
@@ -53,6 +55,7 @@ int main(int argc, char* const argv[]) {
     std::vector<std::string> exclude_sos;
     std::vector<std::string> exclude_finis;
     std::vector<std::string> custome_library_path;
+    std::vector<std::string> exclude_runpath_pattern;
     bool emit_section_header = false;
     bool check_output = false;
 
@@ -68,6 +71,8 @@ int main(int argc, char* const argv[]) {
             case 3:
                 exclude_finis.push_back(optarg);
                 break;
+            case 4:
+                exclude_runpath_pattern.emplace_back(optarg);
             case 'e':
                 exclude_sos.push_back(optarg);
                 break;
@@ -98,12 +103,12 @@ int main(int argc, char* const argv[]) {
         return 1;
     }
 
-    Sold sold(input_file, exclude_sos, exclude_finis, custome_library_path, emit_section_header);
+    Sold sold(input_file, exclude_sos, exclude_finis, custome_library_path, exclude_runpath_pattern, emit_section_header);
     sold.Link(output_file);
 
     if (check_output) {
         std::string dummy = output_file + ".dummy-for-check-output";
-        Sold check(output_file, exclude_sos, exclude_finis, custome_library_path, emit_section_header);
+        Sold check(output_file, exclude_sos, exclude_finis, custome_library_path, exclude_runpath_pattern, emit_section_header);
         check.Link(dummy);
         std::remove(dummy.c_str());
     }

@@ -21,10 +21,12 @@
 #include <set>
 
 Sold::Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_finis,
-           const std::vector<std::string> custome_library_path, bool emit_section_header)
+           const std::vector<std::string> custome_library_path, const std::vector<std::string>& exclude_runpath_pattern,
+           bool emit_section_header)
     : exclude_sos_(exclude_sos),
       exclude_finis_(exclude_finis),
       custome_library_path_(custome_library_path),
+      exclude_runpath_pattern_(exclude_runpath_pattern),
       emit_section_header_(emit_section_header) {
     main_binary_ = ReadELF(elf_filename);
     is_executable_ = main_binary_->FindPhdr(PT_INTERP);
@@ -191,8 +193,15 @@ void Sold::BuildArrays() {
 std::string Sold::BuildRunpath() {
     std::string runpath;
     for (const ELFBinary* b : link_binaries_) {
-        if (b->runpath() != "") {
-            runpath += b->runpath() + ":";
+        std::vector<std::string> runpaths = SplitString(b->runpath(), ":");
+        for (const auto rp : runpaths) {
+            bool matched = false;
+            for (const auto pattern : exclude_runpath_pattern_) {
+                if (rp.find(pattern) != std::string::npos) matched = true;
+            }
+            if (!matched) {
+                runpath += rp + ":";
+            }
         }
     }
     return runpath;
