@@ -60,6 +60,8 @@ public:
     size_t num_plt_rels() const { return num_plt_rels_; }
     const EHFrameHeader* eh_frame_header() const { return &eh_frame_header_; }
     const char* strtab() const { return strtab_; }
+    const size_t dt_strtab() const { return dt_strtab_; }
+    const size_t strsz() const { return strsz_; }
 
     const char* head() const { return head_; }
     char* head_mut() const { return head_; }
@@ -132,6 +134,8 @@ private:
     Elf_Phdr* gnu_stack_{nullptr};
     Elf_Phdr* gnu_relro_{nullptr};
     const char* strtab_{nullptr};
+    size_t dt_strtab_{0};  // For delete_unused_DT_STRTAB option
+    size_t strsz_{0};
     Elf_Sym* symtab_{nullptr};
 
     EHFrameHeader eh_frame_header_;

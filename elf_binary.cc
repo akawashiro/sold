@@ -529,6 +529,9 @@ void ELFBinary::ParseDynamic(size_t off, size_t size) {
         auto get_ptr = [this, dyn]() { return GetPtr(dyn->d_un.d_ptr); };
         if (dyn->d_tag == DT_STRTAB) {
             strtab_ = get_ptr();
+            dt_strtab_ = dyn->d_un.d_ptr;
+        } else if (dyn->d_tag == DT_STRSZ) {
+            strsz_ = dyn->d_un.d_val;
         } else if (dyn->d_tag == DT_SYMTAB) {
             symtab_ = reinterpret_cast<Elf_Sym*>(get_ptr());
         } else if (dyn->d_tag == DT_GNU_HASH) {
@@ -574,7 +577,7 @@ void ELFBinary::ParseDynamic(size_t off, size_t size) {
             verdefnum_ = dyn->d_un.d_val;
         }
     }
-    CHECK(strtab_);
+    CHECK(strtab_ && strsz_);
 
     ParseFuncArray(init_array_offset_, init_arraysz_, &init_array_);
     ParseFuncArray(fini_array_offset_, fini_arraysz_, &fini_array_);

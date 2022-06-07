@@ -48,7 +48,7 @@ int main(int argc, char* const argv[]) {
         {"check-output", no_argument, nullptr, 2},
         {"exclude-from-fini", required_argument, nullptr, 3},
         {"exclude-runpath-contains", required_argument, nullptr, 4},
-        {"delete-unused-PT_DYNAMIC", no_argument, nullptr, 5},
+        {"delete-unused-DT_STRTAB", no_argument, nullptr, 5},
         {0, 0, 0, 0},
     };
 
@@ -60,7 +60,7 @@ int main(int argc, char* const argv[]) {
     std::vector<std::string> exclude_runpath_pattern;
     bool emit_section_header = false;
     bool check_output = false;
-    bool delete_unused_PT_DYNAMIC = false;
+    bool delete_unused_DT_STRTAB = false;
 
     int opt;
     while ((opt = getopt_long(argc, argv, "hi:o:e:", long_options, nullptr)) != -1) {
@@ -78,7 +78,7 @@ int main(int argc, char* const argv[]) {
                 exclude_runpath_pattern.emplace_back(optarg);
                 break;
             case 5:
-                delete_unused_PT_DYNAMIC = true;
+                delete_unused_DT_STRTAB = true;
                 break;
             case 'e':
                 exclude_sos.push_back(optarg);
@@ -111,13 +111,13 @@ int main(int argc, char* const argv[]) {
     }
 
     Sold sold(input_file, exclude_sos, exclude_finis, custome_library_path, exclude_runpath_pattern, emit_section_header,
-              delete_unused_PT_DYNAMIC);
+              delete_unused_DT_STRTAB);
     sold.Link(output_file);
 
     if (check_output) {
         std::string dummy = output_file + ".dummy-for-check-output";
         Sold check(output_file, exclude_sos, exclude_finis, custome_library_path, exclude_runpath_pattern, emit_section_header,
-                   delete_unused_PT_DYNAMIC);
+                   delete_unused_DT_STRTAB);
         check.Link(dummy);
         std::remove(dummy.c_str());
     }

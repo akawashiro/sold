@@ -22,13 +22,13 @@
 
 Sold::Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_finis,
            const std::vector<std::string> custome_library_path, const std::vector<std::string>& exclude_runpath_pattern,
-           bool emit_section_header, bool delete_unused_PT_DYNAMIC)
+           bool emit_section_header, bool delete_unused_DT_STRTAB)
     : exclude_sos_(exclude_sos),
       exclude_finis_(exclude_finis),
       custome_library_path_(custome_library_path),
       exclude_runpath_pattern_(exclude_runpath_pattern),
       emit_section_header_(emit_section_header),
-      delete_unused_PT_DYNAMIC_(delete_unused_PT_DYNAMIC) {
+      delete_unused_DT_STRTAB_(delete_unused_DT_STRTAB) {
     main_binary_ = ReadELF(elf_filename);
     is_executable_ = main_binary_->FindPhdr(PT_INTERP);
     machine_type = main_binary_->ehdr()->e_machine;
