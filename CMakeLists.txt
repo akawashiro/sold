@@ -93,7 +93,7 @@ if(BUILD_TESTING)
             )
     endforeach()
     add_test(
-        NAME c++_features_test
+        NAME feature_unit_tests
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/feature_unit_tests"
         COMMAND run-all-tests.sh
         )
