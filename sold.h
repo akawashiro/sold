@@ -283,10 +283,10 @@ private:
                 LOG(INFO) << SOLD_LOG_BITS(phdr->p_offset) << SOLD_LOG_BITS(bin->dt_strtab())
                           << SOLD_LOG_BITS(bin->dt_strtab() + bin->strsz()) << SOLD_LOG_BITS(phdr->p_offset + phdr->p_filesz);
                 if (phdr->p_offset <= bin->dt_strtab() && bin->dt_strtab() + bin->strsz() <= phdr->p_offset + phdr->p_filesz) {
-                    LOG(INFO) << "Delete unused PT_DYNAMIC: " << SOLD_LOG_KEY(bin->dt_strtab() - phdr->p_offset)
-                              << SOLD_LOG_KEY(bin->dt_strtab() - phdr->p_offset + bin->strsz());
+                    LOG(INFO) << "Delete unused DT_STRTAB: " << SOLD_LOG_KEY(bin->dt_strtab() - phdr->p_offset)
+                              << SOLD_LOG_KEY(bin->dt_strtab() - phdr->p_offset + bin->strsz()) << SOLD_LOG_KEY(bin->strsz());
                     for (int i = bin->dt_strtab() - phdr->p_offset; i < bin->dt_strtab() - phdr->p_offset + bin->strsz(); i++) {
-                        buf[i] = 0;
+                        buf[i] = 'Y';
                     }
                 }
             }
