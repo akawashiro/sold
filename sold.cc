@@ -19,6 +19,7 @@
 #include <list>
 #include <queue>
 #include <set>
+#include "utils.h"
 
 Sold::Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_dirs,
            const std::vector<std::string>& exclude_finis, const std::vector<std::string> custome_library_path,
@@ -515,7 +516,8 @@ void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab) {
 
         Syminfo* found = NULL;
         for (int i = 0; i < symtab.size(); i++) {
-            if (symtab[i].name == p.name && symtab[i].soname == p.soname && symtab[i].version == p.version) {
+            // if (symtab[i].name == p.name && symtab[i].soname == p.soname && symtab[i].version == p.version) {
+            if (symtab[i].name == p.name) {
                 found = &symtab[i];
                 break;
             }
@@ -530,6 +532,7 @@ void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab) {
             if (prio > prio2) {
                 found->sym = sym;
             }
+            LOG(INFO) << "Found " << SOLD_LOG_KEY(p.name) << " twice" << SOLD_LOG_KEY(prio) << SOLD_LOG_KEY(prio2);
 
             if (prio == 2 && prio2 == 2) {
                 LOG(INFO) << "Symbol " << SOLD_LOG_KEY(p.name) << SOLD_LOG_KEY(p.soname) << SOLD_LOG_KEY(p.version)

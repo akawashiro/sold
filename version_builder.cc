@@ -23,13 +23,15 @@ void VersionBuilder::Add(Elf_Versym versym, const std::string& soname, const std
         versym = ((ELF_ST_BIND(st_info) != STB_LOCAL) ? VER_NDX_GLOBAL : VER_NDX_LOCAL);
     }
 
-    if (is_special_ver_ndx(versym)) {
-        CHECK(soname.empty() && version.empty()) << " excess soname or version information is given.";
+    if (is_special_ver_ndx(versym) || (soname.empty() && version.empty())) {
+        // CHECK(soname.empty() && version.empty())
+        //     << " excess soname or version information is given." << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
         LOG(INFO) << "VersionBuilder::" << special_ver_ndx_to_str(versym);
 
         vers.push_back(versym);
     } else {
-        CHECK(!soname.empty() && !version.empty()) << " versym=" << special_ver_ndx_to_str(versym);
+        CHECK(!soname.empty() && !version.empty())
+            << " versym=" << special_ver_ndx_to_str(versym) << SOLD_LOG_KEY(version) << SOLD_LOG_KEY(version);
 
         auto found_filename = soname_to_filename_.find(soname);
         CHECK(found_filename != soname_to_filename_.end())

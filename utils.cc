@@ -51,6 +51,7 @@
 
 #include "utils.h"
 #include <iomanip>
+#include <string>
 
 // Ubuntu 18.04 doesn't have DT_SYMTAB_SHNDX definition.
 #ifndef DT_SYMTAB_SHNDX
@@ -440,6 +441,7 @@ std::ostream& operator<<(std::ostream& os, const Elf_Rel& r) {
 }
 
 bool is_special_ver_ndx(Elf64_Versym versym) {
+    // return (versym == VER_NDX_LOCAL || versym == VER_NDX_GLOBAL);
     return (versym == VER_NDX_LOCAL || versym == VER_NDX_GLOBAL);
 }
 
@@ -451,8 +453,10 @@ std::string special_ver_ndx_to_str(Elf64_Versym versym) {
     } else if (versym == NO_VERSION_INFO) {
         return std::string("NO_VERSION_INFO");
     } else {
-        LOG(FATAL) << "This versym (= " << versym << ") is not special.";
-        exit(1);
+        LOG(WARNING) << "This versym (= " << versym << ") is not special.";
+        return std::string("UNKNOWN_VERSION_INFO (") + std::to_string(versym) + ")";
+        // LOG(FATAL) << "This versym (= " << versym << ") is not special.";
+        // exit(1);
     }
 }
 
