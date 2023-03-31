@@ -24,10 +24,13 @@ void VersionBuilder::Add(Elf_Versym versym, const std::string& soname, const std
     }
 
     if (is_special_ver_ndx(versym)) {
-        CHECK(soname.empty() && version.empty()) << " excess soname or version information is given.";
-        LOG(INFO) << "VersionBuilder::" << special_ver_ndx_to_str(versym);
-
-        vers.push_back(versym);
+        // Memo(joe): Disabled this check because some weak symbol may VER_NDX_GLOBAL while having soname and version.
+        // CHECK(soname.empty() && version.empty()) << " excess soname or version information is given." << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
+        // Only add when versym comes from SymtabBuilder::src_syms_ or SymtabBuilder::src_fallback_syms_.
+        if (soname.empty() && version.empty()) {
+            LOG(INFO) << "VersionBuilder::" << special_ver_ndx_to_str(versym);
+            vers.push_back(versym);
+        }
     } else {
         CHECK(!soname.empty() && !version.empty()) << " versym=" << special_ver_ndx_to_str(versym);
 

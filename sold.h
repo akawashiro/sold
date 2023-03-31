@@ -339,8 +339,13 @@ private:
         for (ELFBinary* bin : link_binaries_) {
             LoadDynSymtab(bin, syms);
         }
+        std::map<std::string, Syminfo> seen;
         for (auto s : syms) {
-            LOG(INFO) << "SYM " << s.name;
+            LOG(INFO) << "SYM " << SOLD_LOG_KEY(s);
+            if (!seen.emplace(s.name, s).second) {
+                const auto& another = seen.at(s.name);
+                LOG(WARNING) << "Duplicate symbol name: " << s.name << " " << SOLD_LOG_KEY(s.soname) << " " << SOLD_LOG_KEY(s.version) << " " << SOLD_LOG_KEY(another.soname) << " " << SOLD_LOG_KEY(another.version);
+            }
         }
         syms_.SetSrcSyms(syms);
     }

@@ -511,12 +511,19 @@ void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab) {
         } else if (sym->st_value) {
             sym->st_value += offset;
         }
-        LOG(INFO) << "Symbol " << name << "@" << bin->name() << " " << sym->st_value;
+        LOG(INFO) << "Symbol " << name << "@" << bin->name() << SOLD_LOG_KEY(p.soname) << SOLD_LOG_KEY(p.version) << SOLD_LOG_KEY(sym->st_value);
 
         Syminfo* found = NULL;
         for (int i = 0; i < symtab.size(); i++) {
             if (symtab[i].name == p.name && symtab[i].soname == p.soname && symtab[i].version == p.version) {
                 found = &symtab[i];
+                break;
+            }
+            // Also catch cases where symtab[i] is VER_NDX_LOCAL and p has specific version.
+            if (symtab[i].name == p.name && symtab[i].versym == VER_NDX_LOCAL) {
+                CHECK(symtab[i].soname.empty() && symtab[i].version.empty());
+                found = &symtab[i];
+                LOG(INFO) << "Found VER_NDX_LOCAL symbol " << symtab[i].name << " and versioned one" << SOLD_LOG_KEY(p.soname) << SOLD_LOG_KEY(p.version);
                 break;
             }
         }
@@ -528,8 +535,9 @@ void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab) {
             int prio = IsDefined(*sym) ? 2 : ELF_ST_BIND(sym->st_info) == STB_WEAK;
             int prio2 = IsDefined(*sym2) ? 2 : ELF_ST_BIND(sym2->st_info) == STB_WEAK;
             if (prio > prio2) {
-                found->sym = sym;
+                *found = p;
             }
+            LOG(INFO) << "Found " << SOLD_LOG_KEY(p.name) << " twice" << SOLD_LOG_KEY(prio) << SOLD_LOG_KEY(prio2);
 
             if (prio == 2 && prio2 == 2) {
                 LOG(INFO) << "Symbol " << SOLD_LOG_KEY(p.name) << SOLD_LOG_KEY(p.soname) << SOLD_LOG_KEY(p.version)
