@@ -519,6 +519,14 @@ void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab) {
                 found = &symtab[i];
                 break;
             }
+            // Also catch cases where symtab[i] is VER_NDX_LOCAL and p has specific version.
+            if (symtab[i].name == p.name && symtab[i].versym == VER_NDX_LOCAL) {
+                CHECK(symtab[i].soname.empty() && symtab[i].version.empty());
+                found = &symtab[i];
+                LOG(INFO) << "Found VER_NDX_LOCAL symbol " << symtab[i].name << " and versioned one" << SOLD_LOG_KEY(p.soname)
+                          << SOLD_LOG_KEY(p.version);
+                break;
+            }
         }
 
         if (found == NULL) {

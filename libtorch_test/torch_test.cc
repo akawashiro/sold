@@ -33,6 +33,7 @@ extern "C" void test() {
     at::Device device("cuda:0");
     a1 = a1.to(device);
     a2 = a2.to(device);
+    SLOG() << "matrix multiplication on GPU test" << std::endl;
     b = at::mm(a1, a2);
 
     SLOG() << "All tests finished." << std::endl;

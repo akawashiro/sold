@@ -14,6 +14,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "version_builder.h"
+#include "utils.h"
 
 void VersionBuilder::Add(Elf_Versym versym, const std::string& soname, const std::string& version, StrtabBuilder& strtab,
                          const unsigned char st_info) {
@@ -24,7 +25,12 @@ void VersionBuilder::Add(Elf_Versym versym, const std::string& soname, const std
     }
 
     if (is_special_ver_ndx(versym)) {
-        CHECK(soname.empty() && version.empty()) << " excess soname or version information is given.";
+        // CHECK(soname.empty() && version.empty())
+        // << " excess soname or version information is given." << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version) << SOLD_LOG_KEY(versym);
+        if (soname.empty() && version.empty()) {
+            LOG(WARNING) << " excess soname or version information is given." << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version)
+                         << SOLD_LOG_KEY(versym);
+        }
         LOG(INFO) << "VersionBuilder::" << special_ver_ndx_to_str(versym);
 
         vers.push_back(versym);

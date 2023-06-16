@@ -197,10 +197,12 @@ void ELFBinary::ReadDynSymtab(const std::map<std::string, std::string>& filename
         std::tie(soname, version) = GetVersion(idx, filename_to_soname);
         Elf_Versym v = versym_ ? versym_[idx] : NO_VERSION_INFO;
 
-        syms_.push_back(Syminfo{symname, soname, version, v, sym});
-        CHECK(duplicate_check.insert({symname, soname, version}).second)
-            << SOLD_LOG_KEY(symname) << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
-        LOG(INFO) << "duplicate_check: " << SOLD_LOG_KEY(symname) << SOLD_LOG_KEY(version);
+        if (duplicate_check.find({symname, soname, version}) == duplicate_check.end()) {
+            syms_.push_back(Syminfo{symname, soname, version, v, sym});
+            CHECK(duplicate_check.insert({symname, soname, version}).second)
+                << SOLD_LOG_KEY(symname) << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
+            LOG(INFO) << "duplicate_check: " << SOLD_LOG_KEY(symname) << SOLD_LOG_KEY(version);
+        }
     }
 
     LOG(INFO) << "nsyms_ = " << nsyms_;
@@ -241,7 +243,7 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index, const std::
                 Elf_Vernaux* vna = (Elf_Vernaux*)((char*)vn + vn->vn_aux);
                 for (int j = 0; j < vn->vn_cnt; ++j) {
                     VLOG(3) << "Elf_Vernaux: " << SOLD_LOG_KEY(vna->vna_hash) << SOLD_LOG_KEY(vna->vna_flags)
-                              << SOLD_LOG_KEY(vna->vna_other) << SOLD_LOG_KEY(strtab_ + vna->vna_name) << SOLD_LOG_KEY(vna->vna_next);
+                            << SOLD_LOG_KEY(vna->vna_other) << SOLD_LOG_KEY(strtab_ + vna->vna_name) << SOLD_LOG_KEY(vna->vna_next);
 
                     if (vna->vna_other == versym_[index]) {
                         LOG(INFO) << "Find Elf_Vernaux corresponds to " << versym_[index] << SOLD_LOG_KEY(strtab_ + vn->vn_file)
@@ -402,8 +404,8 @@ void ELFBinary::ParseEHFrameHeader(size_t off, size_t size) {
         eh_frame_header_.table.emplace_back(e);
 
         VLOG(3) << SOLD_LOG_32BITS(e.initial_loc) << SOLD_LOG_32BITS(e.fde_ptr) << SOLD_LOG_32BITS(off + e.fde_ptr)
-                  << SOLD_LOG_32BITS(AddrFromOffset(off)) << SOLD_LOG_32BITS(AddrFromOffset(off) + e.fde_ptr)
-                  << SOLD_LOG_32BITS(OffsetFromAddr(AddrFromOffset(off) + e.fde_ptr));
+                << SOLD_LOG_32BITS(AddrFromOffset(off)) << SOLD_LOG_32BITS(AddrFromOffset(off) + e.fde_ptr)
+                << SOLD_LOG_32BITS(OffsetFromAddr(AddrFromOffset(off) + e.fde_ptr));
 
         EHFrameHeader::FDE fde = {};
         EHFrameHeader::CIE cie = {};
@@ -477,10 +479,10 @@ void ELFBinary::ParseEHFrameHeader(size_t off, size_t size) {
         fde_read(&fde.initial_loc);
 
         VLOG(3) << "ParseEHFrameHeader table[" << i << "] = {" << SOLD_LOG_32BITS(e.initial_loc) << SOLD_LOG_32BITS(e.fde_ptr)
-                  << "} FDE = {" << SOLD_LOG_32BITS(fde.length) << SOLD_LOG_64BITS(fde.extended_length) << SOLD_LOG_32BITS(fde.CIE_delta)
-                  << SOLD_LOG_32BITS(fde.initial_loc) << "} CIE = {" << SOLD_LOG_32BITS(cie.length) << SOLD_LOG_32BITS(cie.CIE_id)
-                  << SOLD_LOG_8BITS(cie.version) << SOLD_LOG_KEY(cie.aug_str) << SOLD_LOG_DWEHPE(cie.FDE_encoding)
-                  << SOLD_LOG_DWEHPE(cie.LSDA_encoding) << "}";
+                << "} FDE = {" << SOLD_LOG_32BITS(fde.length) << SOLD_LOG_64BITS(fde.extended_length) << SOLD_LOG_32BITS(fde.CIE_delta)
+                << SOLD_LOG_32BITS(fde.initial_loc) << "} CIE = {" << SOLD_LOG_32BITS(cie.length) << SOLD_LOG_32BITS(cie.CIE_id)
+                << SOLD_LOG_8BITS(cie.version) << SOLD_LOG_KEY(cie.aug_str) << SOLD_LOG_DWEHPE(cie.FDE_encoding)
+                << SOLD_LOG_DWEHPE(cie.LSDA_encoding) << "}";
 
         CHECK(cie.FDE_encoding == (DW_EH_PE_sdata4 | DW_EH_PE_pcrel));
         CHECK(cie.LSDA_encoding == (DW_EH_PE_sdata4 | DW_EH_PE_pcrel) || cie.LSDA_encoding == DW_EH_PE_SOLD_DUMMY);
