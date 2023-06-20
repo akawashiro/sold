@@ -21,10 +21,12 @@
 #include <set>
 
 Sold::Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_dirs,
-           const std::vector<std::string>& exclude_finis, const std::vector<std::string> custome_library_path,
-           const std::vector<std::string>& exclude_runpath_pattern, bool emit_section_header, bool delete_unused_DT_STRTAB)
+           const std::vector<std::string>& exclude_inits, const std::vector<std::string>& exclude_finis,
+           const std::vector<std::string> custome_library_path, const std::vector<std::string>& exclude_runpath_pattern,
+           bool emit_section_header, bool delete_unused_DT_STRTAB)
     : exclude_sos_(exclude_sos),
       exclude_dirs_(exclude_dirs),
+      exclude_inits_(exclude_inits),
       exclude_finis_(exclude_finis),
       custome_library_path_(custome_library_path),
       exclude_runpath_pattern_(exclude_runpath_pattern),
@@ -457,12 +459,15 @@ void Sold::CollectTLS() {
 void Sold::CollectArrays() {
     init_array_.emplace_back(mprotect_offset_);
     for (auto iter = link_binaries_.rbegin(); iter != link_binaries_.rend(); ++iter) {
+        if (std::any_of(exclude_inits_.cbegin(), exclude_inits_.cend(), [iter](const auto s) { return HasPrefix((*iter)->soname(), s); }))
+            continue;
         ELFBinary* bin = *iter;
         uintptr_t offset = offsets_[bin];
         bin_to_init_array_offset_[bin] = InitArrayOffset() + sizeof(uintptr_t) * init_array_.size();
         for (uintptr_t ptr : bin->init_array()) {
             init_array_.emplace_back(ptr + offset);
         }
+        LOG(INFO) << bin->filename() << " pushed to the init_array_";
     }
     for (ELFBinary* bin : link_binaries_) {
         uintptr_t offset = offsets_[bin];
@@ -593,14 +598,16 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
     }
 
     if (bin->IsAddrInInitarray(rel->r_offset)) {
-        Elf_Rel newrel = *rel;
-        CHECK(bin_to_init_array_offset_.find(bin) != bin_to_init_array_offset_.end()) << SOLD_LOG_KEY(bin->filename());
+        if (bin_to_init_array_offset_.find(bin) != bin_to_init_array_offset_.end()) {
+            Elf_Rel newrel = *rel;
+            CHECK(bin_to_init_array_offset_.find(bin) != bin_to_init_array_offset_.end()) << SOLD_LOG_KEY(bin->filename());
 
-        newrel.r_offset -= bin->init_array_addr();
-        newrel.r_offset += bin_to_init_array_offset_[bin];
-        LOG(INFO) << SOLD_LOG_BITS(bin->init_array_addr()) << SOLD_LOG_BITS(bin_to_init_array_offset_[bin])
-                  << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend) << SOLD_LOG_BITS(offset);
-        newrels.emplace_back(newrel);
+            newrel.r_offset -= bin->init_array_addr();
+            newrel.r_offset += bin_to_init_array_offset_[bin];
+            LOG(INFO) << SOLD_LOG_BITS(bin->init_array_addr()) << SOLD_LOG_BITS(bin_to_init_array_offset_[bin])
+                      << SOLD_LOG_BITS(newrel.r_offset) << SOLD_LOG_BITS(newrel.r_addend) << SOLD_LOG_BITS(offset);
+            newrels.emplace_back(newrel);
+        }
     } else if (bin->IsAddrInFiniarray(rel->r_offset)) {
         Elf_Rel newrel = *rel;
         CHECK(bin_to_fini_array_offset_.find(bin) != bin_to_fini_array_offset_.end()) << SOLD_LOG_KEY(bin->filename());

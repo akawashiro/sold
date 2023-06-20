@@ -36,8 +36,9 @@
 class Sold {
 public:
     Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_dirs,
-         const std::vector<std::string>& exclude_finis, const std::vector<std::string> custome_library_path,
-         const std::vector<std::string>& exclude_runpath_pattern, bool emit_section_header, bool delete_unused_DT_STRTAB);
+         const std::vector<std::string>& exclude_inits, const std::vector<std::string>& exclude_finis,
+         const std::vector<std::string> custome_library_path, const std::vector<std::string>& exclude_runpath_pattern,
+         bool emit_section_header, bool delete_unused_DT_STRTAB);
 
     void Link(const std::string& out_filename);
 
@@ -457,6 +458,7 @@ private:
     std::vector<std::string> ld_library_paths_;
     const std::vector<std::string> exclude_sos_;
     const std::vector<std::string> exclude_dirs_;
+    const std::vector<std::string> exclude_inits_;
     const std::vector<std::string> exclude_finis_;
     const std::vector<std::string> custome_library_path_;
     const std::vector<std::string> exclude_runpath_pattern_;
