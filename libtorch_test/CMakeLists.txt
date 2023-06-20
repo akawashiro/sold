@@ -11,13 +11,26 @@ endif()
 find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
+add_executable(cuBLAS_test cuBLAS_test.cc)
+target_link_libraries(cuBLAS_test PRIVATE "${TORCH_LIBRARIES}")
+add_custom_target(
+    cuBLAS_test_soldout ALL
+  COMMAND
+    GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i
+    ${CMAKE_CURRENT_BINARY_DIR}/cuBLAS_test -o
+    ${CMAKE_CURRENT_BINARY_DIR}/cuBLAS_test.soldout --section-headers
+    --check-output
+  DEPENDS cuBLAS_test sold
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
 add_library(torch_test SHARED torch_test.cc)
 target_link_libraries(torch_test PRIVATE "${TORCH_LIBRARIES}"
                                          -Wl,-soname,libtorch_test.so)
 set_target_properties(torch_test PROPERTIES SUFFIX ".so.original")
 
 add_custom_target(
-  torch_test_soldout ALL
+  torch_test_soldout
+  EXCLUDE_FROM_ALL
   COMMAND
     GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i
     ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o
