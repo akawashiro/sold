@@ -27,7 +27,10 @@ Options:
 -L, --custom-library-path PATH  Use PATH instead of the default path such as /usr/lib
 --section-headers               Emit section headers
 --check-output                  Check the output using sold itself
---exclude-from-fini             Do not use .fini_array of the ELF file
+--exclude-from-init             Do not use .init_array of the shared object.
+                                This option is only for debug.
+--exclude-from-fini             Do not use .fini_array of the shared object.
+                                This option is only for debug.
 --exclude-runpath-contains      Exclude paths from DT_RUNPATH contains the argument
 --delete-unused-PT_DYNAMIC      Zero pads unused PT_DYNAMIC
 --exclude-dir                   Exclude all SOs in this directory
@@ -51,6 +54,7 @@ int main(int argc, char* const argv[]) {
         {"exclude-runpath-contains", required_argument, nullptr, 4},
         {"delete-unused-DT_STRTAB", no_argument, nullptr, 5},
         {"exclude-dir", required_argument, nullptr, 6},
+        {"exclude-from-init", required_argument, nullptr, 7},
         {0, 0, 0, 0},
     };
 
@@ -58,6 +62,7 @@ int main(int argc, char* const argv[]) {
     std::string output_file;
     std::vector<std::string> exclude_sos;
     std::vector<std::string> exclude_dirs;
+    std::vector<std::string> exclude_inits;
     std::vector<std::string> exclude_finis;
     std::vector<std::string> custome_library_path;
     std::vector<std::string> exclude_runpath_pattern;
@@ -85,6 +90,9 @@ int main(int argc, char* const argv[]) {
                 break;
             case 6:
                 exclude_dirs.emplace_back(optarg);
+                break;
+            case 7:
+                exclude_inits.push_back(optarg);
                 break;
             case 'e':
                 exclude_sos.push_back(optarg);
@@ -116,13 +124,13 @@ int main(int argc, char* const argv[]) {
         return 1;
     }
 
-    Sold sold(input_file, exclude_sos, exclude_dirs, exclude_finis, custome_library_path, exclude_runpath_pattern, emit_section_header,
-              delete_unused_DT_STRTAB);
+    Sold sold(input_file, exclude_sos, exclude_dirs, exclude_inits, exclude_finis, custome_library_path, exclude_runpath_pattern,
+              emit_section_header, delete_unused_DT_STRTAB);
     sold.Link(output_file);
 
     if (check_output) {
         std::string dummy = output_file + ".dummy-for-check-output";
-        Sold check(output_file, exclude_sos, exclude_dirs, exclude_finis, custome_library_path, exclude_runpath_pattern,
+        Sold check(output_file, exclude_sos, exclude_dirs, exclude_inits, exclude_finis, custome_library_path, exclude_runpath_pattern,
                    emit_section_header, delete_unused_DT_STRTAB);
         check.Link(dummy);
         std::remove(dummy.c_str());
