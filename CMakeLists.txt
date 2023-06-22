@@ -110,7 +110,6 @@ endif()
 
 if(SOLD_LIBTORCH_TEST)
     add_subdirectory(libtorch_test)
-    add_subdirectory(LtIgemmTensor)
 endif()
 
 if(SOLD_PYBIND_TEST AND SOLD_LIBTORCH_TEST)

@@ -1,29 +1,10 @@
-cmake_minimum_required(VERSION 3.4)
-project(torch-test LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-endif()
-
 find_package(Torch REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
-add_executable(cuBLAS_test cuBLAS_test.cc)
-target_link_libraries(cuBLAS_test PRIVATE "${TORCH_LIBRARIES}")
-target_include_directories(cuBLAS_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-# add_custom_target(
-#     cuBLAS_test_soldout ALL
-#   COMMAND
-#     GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i
-#     ${CMAKE_CURRENT_BINARY_DIR}/cuBLAS_test -o
-#     ${CMAKE_CURRENT_BINARY_DIR}/cuBLAS_test.soldout --section-headers
-#     --check-output
-#   DEPENDS cuBLAS_test sold
-#   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+if(NOT SOLD_CPU_ONLY_LIBTORCH)
+    add_subdirectory(cuBLASLt_test)
+    add_subdirectory(cuBLAS_test)
+endif()
 
 add_library(torch_test SHARED torch_test.cc)
 target_link_libraries(torch_test PRIVATE "${TORCH_LIBRARIES}"
