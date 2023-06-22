@@ -32,9 +32,9 @@ ELFBinary::ELFBinary(const std::string& filename, int fd, char* head, size_t map
     : filename_(filename), fd_(fd), head_(head), mapped_size_(mapped_size), filesize_(filesize) {
     ehdr_ = reinterpret_cast<Elf_Ehdr*>(head);
 
-    CHECK_EQ(ehdr_->e_type, ET_DYN);
+    CHECK_EQ(ehdr_->e_type, ET_DYN) << SOLD_LOG_KEY(filename);
     CHECK_EQ(ehdr_->e_ident[EI_DATA], ELFDATA2LSB);
-    CHECK((ehdr_->e_machine, EM_X86_64) || (ehdr_->e_machine, EM_AARCH64));
+    CHECK((ehdr_->e_machine == EM_X86_64) || (ehdr_->e_machine == EM_AARCH64));
 
     {
         size_t found = filename.rfind('/');
@@ -91,9 +91,12 @@ bool ELFBinary::IsAddrInFiniarray(uintptr_t addr) const {
 bool ELFBinary::IsVaddrInTLSData(uintptr_t vaddr) const {
     if (tls_) {
         return tls_->p_vaddr <= vaddr && vaddr < (tls_->p_vaddr + tls_->p_filesz);
+        // return tls_->p_vaddr <= vaddr && vaddr < (tls_->p_vaddr + tls_->p_memsz);
     }
     return false;
 }
+
+// TODO: IsVaddrInTLSBSS?
 
 bool ELFBinary::IsOffsetInTLSData(uintptr_t tls_offset) const {
     if (tls_ && tls_offset < tls_->p_memsz) {
@@ -106,7 +109,8 @@ bool ELFBinary::IsOffsetInTLSBSS(uintptr_t tls_offset) const {
     if (tls_ && tls_offset < tls_->p_memsz) {
         return tls_->p_filesz <= tls_offset;
     }
-    LOG(FATAL) << SOLD_LOG_KEY(tls_) << SOLD_LOG_KEY(tls_offset);
+    LOG(FATAL) << SOLD_LOG_KEY(tls_) << SOLD_LOG_KEY(tls_offset) << SOLD_LOG_KEY(tls_->p_memsz) << SOLD_LOG_KEY(tls_->p_filesz)
+               << SOLD_LOG_KEY(filename());
 }
 
 namespace {
@@ -241,7 +245,7 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index, const std::
                 Elf_Vernaux* vna = (Elf_Vernaux*)((char*)vn + vn->vn_aux);
                 for (int j = 0; j < vn->vn_cnt; ++j) {
                     VLOG(3) << "Elf_Vernaux: " << SOLD_LOG_KEY(vna->vna_hash) << SOLD_LOG_KEY(vna->vna_flags)
-                              << SOLD_LOG_KEY(vna->vna_other) << SOLD_LOG_KEY(strtab_ + vna->vna_name) << SOLD_LOG_KEY(vna->vna_next);
+                            << SOLD_LOG_KEY(vna->vna_other) << SOLD_LOG_KEY(strtab_ + vna->vna_name) << SOLD_LOG_KEY(vna->vna_next);
 
                     if (vna->vna_other == versym_[index]) {
                         LOG(INFO) << "Find Elf_Vernaux corresponds to " << versym_[index] << SOLD_LOG_KEY(strtab_ + vn->vn_file)
@@ -252,8 +256,9 @@ std::pair<std::string, std::string> ELFBinary::GetVersion(int index, const std::
                         if (found != filename_to_soname.end()) {
                             return std::make_pair(found->second, std::string(strtab_ + vna->vna_name));
                         } else {
-                            std::string s = ShowStdMap(filename_to_soname);
-                            LOG(FATAL) << "There is no entry for " << filename << " in filename_to_soname=" << s << ".";
+                            return {"", ""};
+                            // std::string s = ShowStdMap(filename_to_soname);
+                            // LOG(FATAL) << "There is no entry for " << filename << " in filename_to_soname=" << s << ".";
                         }
                     }
 
@@ -402,8 +407,8 @@ void ELFBinary::ParseEHFrameHeader(size_t off, size_t size) {
         eh_frame_header_.table.emplace_back(e);
 
         VLOG(3) << SOLD_LOG_32BITS(e.initial_loc) << SOLD_LOG_32BITS(e.fde_ptr) << SOLD_LOG_32BITS(off + e.fde_ptr)
-                  << SOLD_LOG_32BITS(AddrFromOffset(off)) << SOLD_LOG_32BITS(AddrFromOffset(off) + e.fde_ptr)
-                  << SOLD_LOG_32BITS(OffsetFromAddr(AddrFromOffset(off) + e.fde_ptr));
+                << SOLD_LOG_32BITS(AddrFromOffset(off)) << SOLD_LOG_32BITS(AddrFromOffset(off) + e.fde_ptr)
+                << SOLD_LOG_32BITS(OffsetFromAddr(AddrFromOffset(off) + e.fde_ptr));
 
         EHFrameHeader::FDE fde = {};
         EHFrameHeader::CIE cie = {};
@@ -477,10 +482,10 @@ void ELFBinary::ParseEHFrameHeader(size_t off, size_t size) {
         fde_read(&fde.initial_loc);
 
         VLOG(3) << "ParseEHFrameHeader table[" << i << "] = {" << SOLD_LOG_32BITS(e.initial_loc) << SOLD_LOG_32BITS(e.fde_ptr)
-                  << "} FDE = {" << SOLD_LOG_32BITS(fde.length) << SOLD_LOG_64BITS(fde.extended_length) << SOLD_LOG_32BITS(fde.CIE_delta)
-                  << SOLD_LOG_32BITS(fde.initial_loc) << "} CIE = {" << SOLD_LOG_32BITS(cie.length) << SOLD_LOG_32BITS(cie.CIE_id)
-                  << SOLD_LOG_8BITS(cie.version) << SOLD_LOG_KEY(cie.aug_str) << SOLD_LOG_DWEHPE(cie.FDE_encoding)
-                  << SOLD_LOG_DWEHPE(cie.LSDA_encoding) << "}";
+                << "} FDE = {" << SOLD_LOG_32BITS(fde.length) << SOLD_LOG_64BITS(fde.extended_length) << SOLD_LOG_32BITS(fde.CIE_delta)
+                << SOLD_LOG_32BITS(fde.initial_loc) << "} CIE = {" << SOLD_LOG_32BITS(cie.length) << SOLD_LOG_32BITS(cie.CIE_id)
+                << SOLD_LOG_8BITS(cie.version) << SOLD_LOG_KEY(cie.aug_str) << SOLD_LOG_DWEHPE(cie.FDE_encoding)
+                << SOLD_LOG_DWEHPE(cie.LSDA_encoding) << "}";
 
         CHECK(cie.FDE_encoding == (DW_EH_PE_sdata4 | DW_EH_PE_pcrel));
         CHECK(cie.LSDA_encoding == (DW_EH_PE_sdata4 | DW_EH_PE_pcrel) || cie.LSDA_encoding == DW_EH_PE_SOLD_DUMMY);

@@ -16,9 +16,12 @@
 #include "sold.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <list>
 #include <queue>
 #include <set>
+
+#include "utils.h"
 
 Sold::Sold(const std::string& elf_filename, const std::vector<std::string>& exclude_sos, const std::vector<std::string>& exclude_dirs,
            const std::vector<std::string>& exclude_inits, const std::vector<std::string>& exclude_finis,
@@ -231,7 +234,7 @@ void Sold::BuildDynamic() {
         MakeDyn(DT_RPATH, AddStr(main_binary_->rpath()));
     }
     if (!main_binary_->runpath().empty()) {
-        MakeDyn(DT_RUNPATH, AddStr(BuildRunpath()));
+        // MakeDyn(DT_RUNPATH, AddStr(BuildRunpath()));
     }
 
     if (uintptr_t ptr = main_binary_->init()) {
@@ -311,9 +314,10 @@ void Sold::EmitPhdrs(FILE* fp) {
         phdr.p_offset = tls_file_offset_;
         phdr.p_vaddr = tls_offset_;
         phdr.p_paddr = tls_offset_;
-        phdr.p_filesz = tls_.filesz;
+        // phdr.p_filesz = tls_.filesz;
+        phdr.p_filesz = tls_.memsz;
         phdr.p_memsz = tls_.memsz;
-        phdr.p_align = 0x1000;
+        phdr.p_align = TLS_ALIGN;
         phdr.p_type = PT_TLS;
         phdr.p_flags = PF_R;
         phdrs.push_back(phdr);
@@ -402,7 +406,7 @@ uintptr_t Sold::TLSMemSize() const {
     for (ELFBinary* bin : link_binaries_) {
         for (Elf_Phdr* phdr : bin->phdrs()) {
             if (phdr->p_type == PT_TLS) {
-                s += phdr->p_memsz;
+                s += (phdr->p_memsz + (TLS_ALIGN - 1)) / TLS_ALIGN * TLS_ALIGN;
             }
         }
     }
@@ -429,27 +433,36 @@ void Sold::DecideMemOffset() {
 }
 
 void Sold::CollectTLS() {
-    uintptr_t bss_offset = 0;
+    // uintptr_t bss_offset = 0;
     for (ELFBinary* bin : link_binaries_) {
         for (Elf_Phdr* phdr : bin->phdrs()) {
             if (phdr->p_type == PT_TLS) {
+                CHECK_LE(phdr->p_align, TLS_ALIGN) << SOLD_LOG_KEY(bin->filename());
+
                 uint8_t* start = reinterpret_cast<uint8_t*>(bin->GetPtr(phdr->p_vaddr));
-                size_t size = phdr->p_filesz;
-                uintptr_t file_offset = tls_.filesz;
+                size_t memsz = (phdr->p_memsz + (TLS_ALIGN - 1)) / TLS_ALIGN * TLS_ALIGN;
+                size_t filesz = (phdr->p_filesz + (TLS_ALIGN - 1)) / TLS_ALIGN * TLS_ALIGN;
+                // uintptr_t file_offset = tls_.filesz;
+                uintptr_t file_offset = tls_.memsz;
                 CHECK(tls_.bin_to_index.emplace(bin, tls_.data.size()).second);
-                tls_.data.push_back({bin, start, size, file_offset, bss_offset});
-                tls_.memsz += phdr->p_memsz;
-                tls_.filesz += size;
-                bss_offset += phdr->p_memsz - size;
+                tls_.data.emplace_back(TLS::Data{.bin = bin,
+                                                 .start = start,
+                                                 .size = phdr->p_filesz,
+                                                 .padded_size = memsz,  // TODO: Check
+                                                 .file_offset = file_offset,
+                                                 .bss_offset = file_offset + phdr->p_filesz});
+                tls_.memsz += memsz;
+                tls_.filesz += memsz;
+                // bss_offset += memsz - filesz;
             }
         }
     }
     SOLD_CHECK_EQ(tls_.memsz, TLSMemSize());
 
     for (TLS::Data& d : tls_.data) {
-        d.bss_offset += tls_.filesz;
-        LOG(INFO) << "TLS of " << d.bin->name() << ": file=" << HexString(d.file_offset) << " + " << HexString(d.size)
-                  << " mem=" << HexString(d.bss_offset);
+        // d.bss_offset += tls_.filesz;
+        LOG(INFO) << "TLS::Data " << d.bin->name() << SOLD_LOG_BITS(d.start) << SOLD_LOG_BITS(d.size) << SOLD_LOG_BITS(d.padded_size)
+                  << SOLD_LOG_BITS(d.file_offset) << SOLD_LOG_BITS(d.bss_offset);
     }
 
     LOG(INFO) << "TLS: filesz=" << HexString(tls_.filesz) << " memsz=" << HexString(tls_.memsz) << " cnt=" << HexString(tls_.data.size());
@@ -520,7 +533,8 @@ void Sold::LoadDynSymtab(ELFBinary* bin, std::vector<Syminfo>& symtab) {
 
         Syminfo* found = NULL;
         for (int i = 0; i < symtab.size(); i++) {
-            if (symtab[i].name == p.name && symtab[i].soname == p.soname && symtab[i].version == p.version) {
+            // if (symtab[i].name == p.name && symtab[i].soname == p.soname && symtab[i].version == p.version) {
+            if (symtab[i].name == p.name) {
                 found = &symtab[i];
                 break;
             }
@@ -727,7 +741,9 @@ void Sold::RelocateSymbol_x86_64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t o
                     // [bin->tls()->p_filesz, bin->tls()->p_memsz) to
                     // [tls_.data[tls_.bin_to_index[bin]].bss_offset,
                     //  tls_.data[tls_.bin_to_index[bin]].bss_offset + bin->tls()->p_memsz - bin->tls()->p_filesz)
-                    *offset_on_got += tls_.data[tls_.bin_to_index[bin]].bss_offset - bin->tls()->p_filesz;
+                    *offset_on_got +=
+                        tls_.data[tls_.bin_to_index[bin]].bss_offset - bin->tls()->p_filesz;
+                        // tls_.data[tls_.bin_to_index[bin]].bss_offset - (bin->tls()->p_filesz + TLS_ALIGN - 1) / TLS_ALIGN * TLS_ALIGN;
                 } else {
                     // TLS variables with initial values are remapped from
                     // [0, bin->tls()->p_filesz) to
@@ -776,6 +792,7 @@ void Sold::RelocateSymbol_aarch64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t 
     const uintptr_t addend = rel->r_addend;
     std::vector<Elf_Rel> newrels;
 
+    // AYASHII
     if (bin->IsVaddrInTLSData(rel->r_offset)) {
         Elf_Rel newrel = *rel;
         const Elf_Phdr* tls = bin->tls();
@@ -860,7 +877,9 @@ void Sold::RelocateSymbol_aarch64(ELFBinary* bin, const Elf_Rel* rel, uintptr_t 
                     if (is_bss) {
                         LOG(INFO) << "R_AARCH64_TLSDESC" << SOLD_LOG_BITS(newrel.r_addend)
                                   << SOLD_LOG_BITS(tls_.data[tls_.bin_to_index[bin]].bss_offset - bin->tls()->p_filesz);
-                        newrel.r_addend += tls_.data[tls_.bin_to_index[bin]].bss_offset - bin->tls()->p_filesz;
+                        newrel.r_addend +=
+                            tls_.data[tls_.bin_to_index[bin]].bss_offset - bin->tls()->p_filesz;
+                            // tls_.data[tls_.bin_to_index[bin]].bss_offset - (bin->tls()->p_filesz + TLS_ALIGN - 1) / TLS_ALIGN * TLS_ALIGN;
                     } else {
                         LOG(INFO) << "R_AARCH64_TLSDESC" << SOLD_LOG_BITS(newrel.r_addend)
                                   << SOLD_LOG_BITS(tls_.data[tls_.bin_to_index[bin]].file_offset);
@@ -1044,22 +1063,33 @@ void Sold::ResolveLibraryPaths(ELFBinary* root_binary) {
     link_binaries_ = TopologicalSort(link_binaries_buf);
 }
 
+namespace {
+std::string normalizePath(const std::string& messyPath) {
+    std::filesystem::path path(messyPath);
+    std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(path);
+    std::string npath = canonicalPath.make_preferred().string();
+    return npath;
+}
+}  // namespace
+
 bool Sold::ShouldLink(const std::string& soname, const std::string& filepath) {
+    bool ret = true;
     for (const std::string& prefix : EXCLUDE_SHARED_OBJECTS) {
         if (HasPrefix(soname, prefix)) {
-            return false;
+            ret = false;
         }
     }
     for (const std::string& prefix : exclude_sos_) {
         if (HasPrefix(soname, prefix)) {
-            return false;
+            ret = false;
         }
     }
     for (const std::string& prefix : exclude_dirs_) {
-        if (HasPrefix(filepath, prefix)) {
-            return false;
+        if (HasPrefix(normalizePath(filepath), normalizePath(prefix))) {
+            ret = false;
         }
     }
 
-    return true;
+    LOG(INFO) << "ShouldLink " << SOLD_LOG_KEY(filepath) << " = " << ret;
+    return ret;
 }

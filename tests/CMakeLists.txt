@@ -7,6 +7,7 @@ target_link_libraries(test_lib PRIVATE test_base "-Wl,-R,'$$ORIGIN'")
 
 add_executable(test_exe exe.cc)
 target_link_libraries(test_exe test_lib "-Wl,-R,'$$ORIGIN'")
+set_property(TARGET test_exe PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 add_executable(test_hash exe.cc)
 target_link_libraries(test_hash test_lib -Wl,--hash-style=sysv

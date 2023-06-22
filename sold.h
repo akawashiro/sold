@@ -16,6 +16,7 @@
 #include <libgen.h>
 #include <sys/stat.h>
 
+#include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <map>
@@ -32,6 +33,9 @@
 #include "symtab_builder.h"
 #include "utils.h"
 #include "version_builder.h"
+
+// constexpr size_t TLS_ALIGN = 16;
+constexpr size_t TLS_ALIGN = 4096;
 
 class Sold {
 public:
@@ -117,7 +121,8 @@ private:
         for (ELFBinary* bin : link_binaries_) {
             for (Elf_Phdr* phdr : bin->phdrs()) {
                 if (phdr->p_type == PT_TLS) {
-                    s += phdr->p_filesz;
+                    // s += (phdr->p_filesz + (align - 1)) / align * align;
+                    s += (phdr->p_memsz + (TLS_ALIGN - 1)) / TLS_ALIGN * TLS_ALIGN;
                 }
             }
         }
@@ -299,8 +304,13 @@ private:
     void EmitTLS(FILE* fp) {
         EmitPad(fp, TLSOffset());
         CHECK(ftell(fp) == TLSOffset());
-        for (TLS::Data data : tls_.data) {
+        for (const TLS::Data data : tls_.data) {
+            CHECK_GT(data.padded_size, 0) << SOLD_LOG_KEY(data.bin->filename()) << SOLD_LOG_BITS(reinterpret_cast<uintptr_t>(data.start))
+                                          << SOLD_LOG_KEY(data.size) << SOLD_LOG_KEY(data.padded_size);
+            LOG(INFO) << SOLD_LOG_KEY(data.bin->filename()) << SOLD_LOG_BITS(reinterpret_cast<uintptr_t>(data.start))
+                      << SOLD_LOG_KEY(data.size) << SOLD_LOG_KEY(data.padded_size);
             WriteBuf(fp, data.start, data.size);
+            EmitZeros(fp, data.padded_size - data.size);
         }
     }
 

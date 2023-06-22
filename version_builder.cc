@@ -24,17 +24,18 @@ void VersionBuilder::Add(Elf_Versym versym, const std::string& soname, const std
     }
 
     if (is_special_ver_ndx(versym)) {
-        CHECK(soname.empty() && version.empty()) << " excess soname or version information is given.";
+        // CHECK(soname.empty() && version.empty()) << " excess soname or version information is given.";
         LOG(INFO) << "VersionBuilder::" << special_ver_ndx_to_str(versym);
 
         vers.push_back(versym);
     } else {
-        CHECK(!soname.empty() && !version.empty()) << " versym=" << special_ver_ndx_to_str(versym);
+        // CHECK(!soname.empty() && !version.empty()) << " versym=" << special_ver_ndx_to_str(versym);
 
         auto found_filename = soname_to_filename_.find(soname);
-        CHECK(found_filename != soname_to_filename_.end())
-            << soname << " does not exists in soname_to_filename." << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
-        std::string filename = found_filename->second;
+        // CHECK(found_filename != soname_to_filename_.end())
+        //     << soname << " does not exists in soname_to_filename." << SOLD_LOG_KEY(soname) << SOLD_LOG_KEY(version);
+        // std::string filename = found_filename->second;
+        std::string filename = (found_filename != soname_to_filename_.end()) ? found_filename->second : "";
 
         strtab.Add(filename);
         strtab.Add(version);

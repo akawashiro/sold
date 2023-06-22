@@ -189,6 +189,7 @@ struct TLS {
         ELFBinary* bin;
         uint8_t* start;
         size_t size;
+        size_t padded_size;
         uintptr_t file_offset;
         uintptr_t bss_offset;
     };
@@ -245,7 +246,7 @@ inline std::string HexString(T num, int length = -1) {
         length = sizeof(T) * 2;
     }
     std::stringstream ss;
-    ss << "0x" << std::uppercase << std::setfill('0') << std::setw(length) << std::hex << +num;
+    ss << "0x" << std::uppercase << std::setfill('0') << std::setw(length) << std::hex << 0+num;
     return ss.str();
 }
 

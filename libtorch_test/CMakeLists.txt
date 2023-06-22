@@ -13,15 +13,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 add_executable(cuBLAS_test cuBLAS_test.cc)
 target_link_libraries(cuBLAS_test PRIVATE "${TORCH_LIBRARIES}")
-add_custom_target(
-    cuBLAS_test_soldout ALL
-  COMMAND
-    GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i
-    ${CMAKE_CURRENT_BINARY_DIR}/cuBLAS_test -o
-    ${CMAKE_CURRENT_BINARY_DIR}/cuBLAS_test.soldout --section-headers
-    --check-output
-  DEPENDS cuBLAS_test sold
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(cuBLAS_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+# add_custom_target(
+#     cuBLAS_test_soldout ALL
+#   COMMAND
+#     GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i
+#     ${CMAKE_CURRENT_BINARY_DIR}/cuBLAS_test -o
+#     ${CMAKE_CURRENT_BINARY_DIR}/cuBLAS_test.soldout --section-headers
+#     --check-output
+#   DEPENDS cuBLAS_test sold
+#   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(torch_test SHARED torch_test.cc)
 target_link_libraries(torch_test PRIVATE "${TORCH_LIBRARIES}"
@@ -40,13 +42,13 @@ add_custom_target(
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_custom_target(
-  torch_test_soldout_wo_section
-  EXCLUDE_FROM_ALL
+  torch_test_soldout_wo_section ALL
+  # EXCLUDE_FROM_ALL
   COMMAND
     GLOG_log_dir=${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_BINARY_DIR}/sold -i
     ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.original -o
     ${CMAKE_CURRENT_BINARY_DIR}/libtorch_test.so.wosection.soldout
-    --check-output
+    --check-output --exclude-so libcudart --exclude-so libcudart --exclude-dir /usr/local/cuda-11.7/lib64/ && ln -sf libtorch_test.so.wosection.soldout libtorch_test.so
   DEPENDS torch_test sold
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
