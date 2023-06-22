@@ -31,9 +31,12 @@ def parse_maps(maps_filename):
         toks = line.split()
         if len(toks) == 6:
             addrs, perms, off, dev, inode, path = toks
-        else:
-            assert len(toks) == 5
+        elif len(toks) == 5:
             addrs, perms, off, dev, inode = toks
+            path = ''
+        else:
+            assert len(toks) == 7
+            addrs, perms, off, t, inode, dev, msg = toks
             path = ''
         begin, end = [int(a, 16) for a in addrs.split('-')]
         if path not in base_addrs:
